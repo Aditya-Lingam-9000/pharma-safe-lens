@@ -19,7 +19,7 @@ aiofiles==23.2.1
 
 # Utilities
 python-dotenv==1.0.0
-python-Levenshtein==0.21.1  # Fuzzy matching for OCR noise tolerance
+levenshtein>=0.21.1  # Fuzzy matching for OCR noise tolerance
 
 # Testing
 pytest==7.4.4
