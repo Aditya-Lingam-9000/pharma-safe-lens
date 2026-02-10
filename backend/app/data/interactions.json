@@ -4,7 +4,7 @@
     "severity": "major",
     "mechanism": "Both drugs affect blood clotting - aspirin inhibits platelet aggregation, warfarin inhibits vitamin K-dependent clotting factors",
     "clinical_effect": "Significantly increased risk of bleeding, including gastrointestinal and intracranial hemorrhage",
-    "recommendation": "Avoid combination if possible. If necessary, use lowest effective doses and monitor INR closely. Watch for signs of bleeding.",
+    "recommendation": "Avoid combination if possible. If necessary, use lowest effective doses and monitor INR closely.",
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
@@ -17,7 +17,7 @@
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
-  "warfarin+ibuprofen": {
+  "ibuprofen+warfarin": {
     "risk_level": "high",
     "severity": "major",
     "mechanism": "Ibuprofen (NSAID) inhibits platelet function and may displace warfarin from protein binding sites, increasing free warfarin levels",
@@ -26,7 +26,7 @@
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
-  "lisinopril+ibuprofen": {
+  "ibuprofen+lisinopril": {
     "risk_level": "moderate",
     "severity": "moderate",
     "mechanism": "NSAIDs can reduce the antihypertensive effect of ACE inhibitors and increase risk of renal impairment",
@@ -35,16 +35,8 @@
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
-  "warfarin+aspirin": {
-    "risk_level": "high",
-    "severity": "major",
-    "mechanism": "Additive antiplatelet and anticoagulant effects",
-    "clinical_effect": "Significantly increased bleeding risk",
-    "recommendation": "Only use together under close medical supervision. Monitor INR frequently. Watch for bleeding signs.",
-    "source": "FDA Drug Interactions Database",
-    "evidence_level": "well-documented"
-  },
-  "metformin+atorvastatin": {
+
+  "atorvastatin+metformin": {
     "risk_level": "low",
     "severity": "minor",
     "mechanism": "No significant pharmacokinetic or pharmacodynamic interaction",
@@ -53,7 +45,7 @@
     "source": "Clinical studies",
     "evidence_level": "well-documented"
   },
-  "metformin+lisinopril": {
+  "lisinopril+metformin": {
     "risk_level": "low",
     "severity": "minor",
     "mechanism": "No significant interaction. Both commonly used together in diabetic patients with hypertension.",
@@ -71,7 +63,7 @@
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
-  "omeprazole+clopidogrel": {
+  "clopidogrel+omeprazole": {
     "risk_level": "moderate",
     "severity": "moderate",
     "mechanism": "Omeprazole inhibits CYP2C19, reducing conversion of clopidogrel to its active metabolite",
@@ -80,7 +72,7 @@
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
-  "pantoprazole+clopidogrel": {
+  "clopidogrel+pantoprazole": {
     "risk_level": "low",
     "severity": "minor",
     "mechanism": "Pantoprazole has less CYP2C19 inhibition compared to omeprazole",
@@ -107,7 +99,7 @@
     "source": "FDA Drug Interactions Database",
     "evidence_level": "well-documented"
   },
-  "losartan+lisinopril": {
+  "lisinopril+losartan": {
     "risk_level": "moderate",
     "severity": "moderate",
     "mechanism": "Both act on renin-angiotensin system (ARB + ACE inhibitor)",
@@ -116,7 +108,7 @@
     "source": "Clinical practice guidelines",
     "evidence_level": "well-documented"
   },
-  "simvastatin+atorvastatin": {
+  "atorvastatin+simvastatin": {
     "risk_level": "high",
     "severity": "major",
     "mechanism": "Both are statins - no reason to combine, only increases risk",
@@ -134,7 +126,7 @@
     "source": "Clinical practice",
     "evidence_level": "well-documented"
   },
-  "warfarin+metformin": {
+  "metformin+warfarin": {
     "risk_level": "low",
     "severity": "minor",
     "mechanism": "No direct interaction, but both require monitoring",
@@ -152,7 +144,7 @@
     "source": "Clinical practice guidelines",
     "evidence_level": "well-documented"
   },
-  "levothyroxine+atorvastatin": {
+  "atorvastatin+levothyroxine": {
     "risk_level": "none",
     "severity": "none",
     "mechanism": "No significant interaction",
@@ -170,7 +162,7 @@
     "source": "Clinical practice",
     "evidence_level": "well-documented"
   },
-  "tramadol+omeprazole": {
+  "omeprazole+tramadol": {
     "risk_level": "low",
     "severity": "minor",
     "mechanism": "Minimal interaction. Omeprazole may slightly affect tramadol metabolism.",
@@ -178,5 +170,158 @@
     "recommendation": "No special precautions. Monitor pain control and side effects as usual.",
     "source": "Clinical pharmacology",
     "evidence_level": "moderate"
+  },
+  "fluoxetine+tramadol": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Both drugs increase serotonin levels; Fluoxetine inhibits CYP2D6 which metabolizes tramadol",
+    "clinical_effect": "Risk of Serotonin Syndrome (agitation, hallucinations, rapid rate, fever). Reduced pain relief from tramadol.",
+    "recommendation": "Avoid combination. Use alternative analgesic. If necessary, monitor closely for signs of serotonin toxicity.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "sertraline+tramadol": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Additive serotonergic effects",
+    "clinical_effect": "Increased risk of Serotonin Syndrome. May lower seizure threshold.",
+    "recommendation": "Use with caution. Monitor for signs of serotonin syndrome. Consider lower doses.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "fluoxetine+warfarin": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Fluoxetine may inhibit warfarin metabolism via CYP2C9 and has antiplatelet effects",
+    "clinical_effect": "Increased bleeding risk and potential INR elevation",
+    "recommendation": "Monitor INR closely when starting or stopping fluoxetine. Monitor for bleeding.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "ciprofloxacin+warfarin": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Ciprofloxacin inhibits CYP1A2 and CYP3A4, reducing warfarin metabolism",
+    "clinical_effect": "Significantly increased INR and bleeding risk",
+    "recommendation": "Avoid if possible or reduce warfarin dose preemptively. Monitor INR closely.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "lisinopril+spironolactone": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Both drugs reduce potassium excretion (ACE inhibitor + K-sparing diuretic)",
+    "clinical_effect": "Significant risk of hyperkalemia (high potassium), potentially leading to cardiac arrhythmias",
+    "recommendation": "Monitor serum potassium and renal function closely. Avoid high-potassium diet.",
+    "source": "Clinical practice guidelines",
+    "evidence_level": "well-documented"
+  },
+  "amiodarone+digoxin": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Amiodarone increases digoxin levels via P-gp inhibition",
+    "clinical_effect": "Increased risk of digoxin toxicity (nausea, arrhythmias, visual changes)",
+    "recommendation": "Reduce digoxin dose by 30-50% if amiodarone is added. Monitor digoxin levels.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "amiodarone+simvastatin": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Amiodarone inhibits CYP3A4, increasing simvastatin levels",
+    "clinical_effect": "Increased risk of myopathy and rhabdomyolysis",
+    "recommendation": "Limit simvastatin dose to 20mg/day or switch to a non-CYP3A4 statin (e.g., rosuvastatin).",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "alprazolam+oxycodone": {
+    "risk_level": "high",
+    "severity": "critical",
+    "mechanism": "Additive CNS depression (Benzo + Opioid)",
+    "clinical_effect": "Profound sedation, respiratory depression, coma, death. FDA Black Box Warning.",
+    "recommendation": "Avoid combination. If necessary, limit dosages and duration. Monitor closely for respiratory depression.",
+    "source": "FDA Black Box Warning",
+    "evidence_level": "well-documented"
+  },
+  "diazepam+hydrocodone": {
+    "risk_level": "high",
+    "severity": "critical",
+    "mechanism": "Additive CNS depression (Benzo + Opioid)",
+    "clinical_effect": "Profound sedation, respiratory depression, coma, death. FDA Black Box Warning.",
+    "recommendation": "Avoid combination. If necessary, limit dosages and duration. Monitor closely for respiratory depression.",
+    "source": "FDA Black Box Warning",
+    "evidence_level": "well-documented"
+  },
+  "amoxicillin+azithromycin": {
+    "risk_level": "none",
+    "severity": "none",
+    "mechanism": "Different mechanisms of action",
+    "clinical_effect": "Generally safe, though combining antibiotics increases risk of diarrhea/C. diff.",
+    "recommendation": "No specific interaction. Ensure indication for dual therapy exists (e.g., H. pylori, pneumonia).",
+    "source": "Clinical practice",
+    "evidence_level": "well-documented"
+  },
+  "amoxicillin+clavulanate": {
+    "risk_level": "none",
+    "severity": "none",
+    "mechanism": "Synergistic effect (this is Augmentin)",
+    "clinical_effect": "Therapeutic combination.",
+    "recommendation": "Standard dosing.",
+    "source": "Standard Therapy",
+    "evidence_level": "well-documented"
+  },
+  "calcium+doxycycline": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Calcium binds to tetracyclines in the gut, reducing absorption",
+    "clinical_effect": "Reduced efficacy of the antibiotic",
+    "recommendation": "Separate doses by at least 2 hours.",
+    "source": "FDA Labeling",
+    "evidence_level": "well-documented"
+  },
+  "antacids+ciprofloxacin": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Cations (Mg, Al, Ca) bind to ciprofloxacin reducing absorption",
+    "clinical_effect": "Reduced efficacy of ciprofloxacin",
+    "recommendation": "Take ciprofloxacin 2 hours before or 6 hours after antacids.",
+    "source": "FDA Labeling",
+    "evidence_level": "well-documented"
+  },
+  "alcohol+clonazepam": {
+    "risk_level": "high",
+    "severity": "critical",
+    "mechanism": "Additive CNS depression",
+    "clinical_effect": "Severe sedation, respiratory depression, impairment.",
+    "recommendation": "Strictly avoid alcohol while taking this medication.",
+    "source": "FDA Labeling",
+    "evidence_level": "well-documented"
+  },
+  "alcohol+metrogyl": {
+    "risk_level": "high",
+    "severity": "moderate",
+    "mechanism": "Disulfiram-like reaction inhibition of aldehyde dehydrogenase",
+    "clinical_effect": "Flushing, vomiting, tachycardia (Antabuse reaction).",
+    "recommendation": "Avoid alcohol during and for 48 hours after treatment.",
+    "source": "FDA Labeling",
+    "evidence_level": "well-documented"
+  },
+  "nitrates+sildenafil": {
+    "risk_level": "high",
+    "severity": "critical",
+    "mechanism": "Synergistic vasodilation (PDE5 inhibitor + Nitric Oxide donor)",
+    "clinical_effect": "Severe, life-threatening hypotension",
+    "recommendation": "CONTRAINDICATED. Never use together.",
+    "source": "FDA Contraindication",
+    "evidence_level": "critical"
+  },
+  "alcohol+tylenol": {
+    "risk_level": "moderate",
+    "severity": "major",
+    "mechanism": "Increased production of toxic metabolite NAPQI via CYP2E1 induction",
+    "clinical_effect": "Increased risk of liver toxicity/failure",
+    "recommendation": "Avoid excessive alcohol. Do not exceed 4g acetaminophen daily.",
+    "source": "FDA Labeling",
+    "evidence_level": "well-documented"
   }
 }

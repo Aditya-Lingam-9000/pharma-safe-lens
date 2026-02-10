@@ -1,62 +1,150 @@
 {
   "aspirin": {
-    "brand_names": ["ecosprin", "disprin", "aspro", "bayer aspirin"],
-    "common_misspellings": ["asprin", "aspirine", "aspr in"]
+    "brand_names": ["ecosprin", "disprin", "bayer", "bufferin", "excedrin"],
+    "common_misspellings": ["asprin", "aspirine", "asperin"]
   },
   "warfarin": {
-    "brand_names": ["coumadin", "jantoven", "marevan"],
-    "common_misspellings": ["warfrin", "warfarine", "warfarin"]
+    "brand_names": ["coumadin", "jantoven", "marevan", "uniwarfin"],
+    "common_misspellings": ["warfrin", "warfarine", "wafrin"]
   },
   "metformin": {
-    "brand_names": ["glucophage", "glumetza", "riomet", "fortamet"],
-    "common_misspellings": ["metformin", "metforin", "met formin"]
+    "brand_names": ["glucophage", "fortamet", "glumetza", "riomet", "glycomet"],
+    "common_misspellings": ["metforman", "metfomin", "metaformin"]
   },
   "ibuprofen": {
-    "brand_names": ["advil", "motrin", "nurofen", "brufen"],
-    "common_misspellings": ["ibuprofin", "ibuprof en", "ibuproffen"]
+    "brand_names": ["advil", "motrin", "brufen", "nurofen", "ibuprom"],
+    "common_misspellings": ["ibuprofin", "ibrufen", "ibuphrofen"]
   },
   "lisinopril": {
     "brand_names": ["prinivil", "zestril", "qbrelis"],
-    "common_misspellings": ["lisinopril", "lisinopril", "lisino pril"]
+    "common_misspellings": ["lisinopryl", "lisnopril", "lisinipril"]
   },
   "atorvastatin": {
-    "brand_names": ["lipitor", "torvast", "atorlip"],
-    "common_misspellings": ["atorvastatin", "atorva statin", "atorvastat in"]
+    "brand_names": ["lipitor", "atorva", "sortis"],
+    "common_misspellings": ["atorvastin", "atorvostatin", "artovastatin"]
   },
   "amlodipine": {
-    "brand_names": ["norvasc", "amlovas", "amlip"],
-    "common_misspellings": ["amlodipine", "amlodi pine", "amlodipin"]
+    "brand_names": ["norvasc", "amlo", "amlow"],
+    "common_misspellings": ["amlodipin", "amlodapine", "amlodepine"]
   },
   "omeprazole": {
-    "brand_names": ["prilosec", "losec", "omez"],
-    "common_misspellings": ["omeprazole", "omepra zole", "omeprazol"]
+    "brand_names": ["prilosec", "omez", "losec"],
+    "common_misspellings": ["omeprazol", "omprazole", "omeprazolee"]
   },
   "levothyroxine": {
-    "brand_names": ["synthroid", "levoxyl", "eltroxin"],
-    "common_misspellings": ["levothyroxine", "levothy roxine", "levothyroxin"]
+    "brand_names": ["synthroid", "levoxyl", "unithroid", "eltroxin", "thyronorm"],
+    "common_misspellings": ["levothyroxin", "levothoroxine", "thyroxine"]
   },
   "simvastatin": {
-    "brand_names": ["zocor", "simvotin", "simcard"],
-    "common_misspellings": ["simvastatin", "simva statin", "simvastat in"]
+    "brand_names": ["zocor", "imvastatin", "simvotin"],
+    "common_misspellings": ["simvastin", "simovastatin"]
   },
   "losartan": {
-    "brand_names": ["cozaar", "losacar", "repace"],
-    "common_misspellings": ["losartan", "losar tan", "losart an"]
+    "brand_names": ["cozaar", "losar", "lozaar"],
+    "common_misspellings": ["losartin", "losarton"]
   },
   "gabapentin": {
-    "brand_names": ["neurontin", "gabapin", "gralise"],
-    "common_misspellings": ["gabapentin", "gabapen tin", "gabapent in"]
+    "brand_names": ["neurontin", "gralise", "horizant"],
+    "common_misspellings": ["gabapetin", "gabapantin"]
   },
   "clopidogrel": {
-    "brand_names": ["plavix", "clopivas", "deplatt"],
-    "common_misspellings": ["clopidogrel", "clopido grel", "clopidogr el"]
+    "brand_names": ["plavix", "clopilet", "clopid"],
+    "common_misspellings": ["clopidogral", "clopigrel"]
   },
   "pantoprazole": {
-    "brand_names": ["protonix", "pantop", "pan"],
-    "common_misspellings": ["pantoprazole", "pantopra zole", "pantoprazol"]
+    "brand_names": ["protonix", "pantocid", "pantop"],
+    "common_misspellings": ["pantoprazol", "pantaprazole"]
   },
   "tramadol": {
-    "brand_names": ["ultram", "tramal", "zydol"],
-    "common_misspellings": ["tramadol", "trama dol", "tramad ol"]
+    "brand_names": ["ultram", "conzip", "tramazac"],
+    "common_misspellings": ["tramdol", "tramadols"]
+  },
+  "amoxicillin": {
+    "brand_names": ["amoxil", "moxatag", "trimox"],
+    "common_misspellings": ["amoxicilin", "amoxacillin", "amox"]
+  },
+  "azithromycin": {
+    "brand_names": ["zithromax", "z-pak", "aziwok"],
+    "common_misspellings": ["azithromicin", "azithromycn", "azithro"]
+  },
+  "ciprofloxacin": {
+    "brand_names": ["cipro", "proquin", "ciproxin"],
+    "common_misspellings": ["ciproflaxin", "ciprofloxin"]
+  },
+  "fluoxetine": {
+    "brand_names": ["prozac", "sarafem", "fludac"],
+    "common_misspellings": ["fluoxetin", "fluoxitine"]
+  },
+  "sertraline": {
+    "brand_names": ["zoloft", "lustral", "sertima"],
+    "common_misspellings": ["sertralin", "sertaline"]
+  },
+  "escitalopram": {
+    "brand_names": ["lexapro", "cipralex", "nexito"],
+    "common_misspellings": ["escitaloprm", "escitalopram"]
+  },
+  "alprazolam": {
+    "brand_names": ["xanax", "niravam", "alprax"],
+    "common_misspellings": ["alprazolm", "alprazolan"]
+  },
+  "diazepam": {
+    "brand_names": ["valium", "diastat", "calmpose"],
+    "common_misspellings": ["diazepm", "dizepam"]
+  },
+  "clonazepam": {
+    "brand_names": ["klonopin", "rivotril"],
+    "common_misspellings": ["clonazepm", "clonazapam"]
+  },
+  "zolpidem": {
+    "brand_names": ["ambien", "edluar", "intermezzo"],
+    "common_misspellings": ["zolpidim", "zolpide"]
+  },
+  "furosemide": {
+    "brand_names": ["lasix", "delone"],
+    "common_misspellings": ["furosemid", "furasemide"]
+  },
+  "hydrochlorothiazide": {
+    "brand_names": ["microzide", "hydrodiuril", "aquazide"],
+    "common_misspellings": ["hctz", "hydrochlorothiazid"]
+  },
+  "spironolactone": {
+    "brand_names": ["aldactone", "carospir"],
+    "common_misspellings": ["spirolactone", "spironolacton"]
+  },
+  "metoprolol": {
+    "brand_names": ["lopressor", "toprol", "metolar"],
+    "common_misspellings": ["metaprolol", "metopralol"]
+  },
+  "atenolol": {
+    "brand_names": ["tenormin"],
+    "common_misspellings": ["atenol", "atenelol"]
+  },
+  "digoxin": {
+    "brand_names": ["lanoxin", "digitek"],
+    "common_misspellings": ["digoxen", "digxin"]
+  },
+  "prednisone": {
+    "brand_names": ["deltasone", "rayos"],
+    "common_misspellings": ["prednison", "prednisone"]
+  },
+  "oxycodone": {
+    "brand_names": ["oxycontin", "roxicodone", "percocet"],
+    "common_misspellings": ["oxicodone", "oxycodon"]
+  },
+  "hydrocodone": {
+    "brand_names": ["vicodin", "lorcet", "lortab"],
+    "common_misspellings": ["hydrocodne", "hydrocodon"]
+  },
+  "acetaminophen": {
+    "brand_names": ["tylenol", "paracetamol", "panadol", "crocin"],
+    "common_misspellings": ["acetaminofin", "acetaminaphen"]
+  },
+  "naproxen": {
+    "brand_names": ["aleve", "nprosyn", "anaprox"],
+    "common_misspellings": ["naproxin", "naproxe"]
+  },
+  "doxycycline": {
+    "brand_names": ["vibramycin", "monodox", "doxy"],
+    "common_misspellings": ["doxycyclin", "doxicycline"]
   }
 }
