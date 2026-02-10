@@ -8,9 +8,10 @@ pydantic==2.5.3
 
 # OCR (CPU-only) - Phase 1
 # Using EasyOCR for Windows compatibility (CPU-only)
+# Note: Pillow must be <10.0.0 for EasyOCR compatibility
 easyocr==1.7.0
 pytesseract==0.3.10
-Pillow==10.2.0
+Pillow<10.0.0
 opencv-python==4.9.0.80
 
 # Data handling

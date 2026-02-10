@@ -1,0 +1,182 @@
+{
+  "aspirin+warfarin": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Both drugs affect blood clotting - aspirin inhibits platelet aggregation, warfarin inhibits vitamin K-dependent clotting factors",
+    "clinical_effect": "Significantly increased risk of bleeding, including gastrointestinal and intracranial hemorrhage",
+    "recommendation": "Avoid combination if possible. If necessary, use lowest effective doses and monitor INR closely. Watch for signs of bleeding.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "aspirin+ibuprofen": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Both are NSAIDs that inhibit COX enzymes, leading to additive effects on gastric mucosa and platelet function",
+    "clinical_effect": "Increased risk of gastrointestinal bleeding and ulceration. Ibuprofen may reduce cardioprotective effects of aspirin.",
+    "recommendation": "Avoid concurrent use if possible. If needed, take ibuprofen at least 2 hours after aspirin. Monitor for GI symptoms.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "warfarin+ibuprofen": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Ibuprofen (NSAID) inhibits platelet function and may displace warfarin from protein binding sites, increasing free warfarin levels",
+    "clinical_effect": "Markedly increased risk of bleeding, particularly gastrointestinal bleeding",
+    "recommendation": "Avoid combination. Consider alternative pain relief (e.g., acetaminophen). If unavoidable, monitor INR closely and watch for bleeding.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "lisinopril+ibuprofen": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "NSAIDs can reduce the antihypertensive effect of ACE inhibitors and increase risk of renal impairment",
+    "clinical_effect": "Decreased blood pressure control, potential acute kidney injury, hyperkalemia",
+    "recommendation": "Monitor blood pressure and renal function. Use lowest effective NSAID dose for shortest duration. Consider alternative pain relief.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "warfarin+aspirin": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Additive antiplatelet and anticoagulant effects",
+    "clinical_effect": "Significantly increased bleeding risk",
+    "recommendation": "Only use together under close medical supervision. Monitor INR frequently. Watch for bleeding signs.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "metformin+atorvastatin": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "No significant pharmacokinetic or pharmacodynamic interaction",
+    "clinical_effect": "Generally safe combination. May have additive benefits for cardiovascular risk reduction in diabetic patients.",
+    "recommendation": "No special precautions needed. Routine monitoring of glucose and lipids as indicated.",
+    "source": "Clinical studies",
+    "evidence_level": "well-documented"
+  },
+  "metformin+lisinopril": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "No significant interaction. Both commonly used together in diabetic patients with hypertension.",
+    "clinical_effect": "Generally safe and often beneficial combination for diabetic patients",
+    "recommendation": "Monitor renal function periodically as both drugs are renally excreted. Standard diabetes and hypertension monitoring.",
+    "source": "Clinical practice guidelines",
+    "evidence_level": "well-documented"
+  },
+  "amlodipine+atorvastatin": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "Amlodipine may slightly increase atorvastatin levels via CYP3A4 inhibition",
+    "clinical_effect": "Minimal clinical significance. Slight increase in statin exposure may increase efficacy but also risk of myopathy.",
+    "recommendation": "Generally safe combination. Monitor for muscle pain or weakness. Consider starting with lower atorvastatin dose.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "omeprazole+clopidogrel": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Omeprazole inhibits CYP2C19, reducing conversion of clopidogrel to its active metabolite",
+    "clinical_effect": "Reduced antiplatelet effect of clopidogrel, potentially increasing cardiovascular events",
+    "recommendation": "Avoid combination if possible. Consider alternative PPI (e.g., pantoprazole) or H2 blocker. If unavoidable, separate dosing times.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "pantoprazole+clopidogrel": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "Pantoprazole has less CYP2C19 inhibition compared to omeprazole",
+    "clinical_effect": "Minimal effect on clopidogrel activation. Considered safer PPI option with clopidogrel.",
+    "recommendation": "Preferred PPI for patients on clopidogrel. Standard monitoring for both medications.",
+    "source": "Clinical studies",
+    "evidence_level": "well-documented"
+  },
+  "levothyroxine+omeprazole": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "PPIs may reduce gastric acidity, potentially affecting levothyroxine absorption",
+    "clinical_effect": "Possible decreased levothyroxine absorption, may require dose adjustment",
+    "recommendation": "Monitor TSH levels. Take levothyroxine on empty stomach, at least 30-60 minutes before omeprazole.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "moderate"
+  },
+  "gabapentin+tramadol": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Additive CNS depressant effects",
+    "clinical_effect": "Increased sedation, dizziness, respiratory depression risk",
+    "recommendation": "Use with caution. Start with lower doses. Avoid driving or operating machinery. Monitor for excessive sedation.",
+    "source": "FDA Drug Interactions Database",
+    "evidence_level": "well-documented"
+  },
+  "losartan+lisinopril": {
+    "risk_level": "moderate",
+    "severity": "moderate",
+    "mechanism": "Both act on renin-angiotensin system (ARB + ACE inhibitor)",
+    "clinical_effect": "Increased risk of hypotension, hyperkalemia, and renal impairment without additional benefit",
+    "recommendation": "Generally not recommended. Use one or the other, not both. If combined, monitor BP, potassium, and renal function closely.",
+    "source": "Clinical practice guidelines",
+    "evidence_level": "well-documented"
+  },
+  "simvastatin+atorvastatin": {
+    "risk_level": "high",
+    "severity": "major",
+    "mechanism": "Both are statins - no reason to combine, only increases risk",
+    "clinical_effect": "Significantly increased risk of myopathy, rhabdomyolysis, liver toxicity",
+    "recommendation": "Never combine statins. Use one statin at appropriate dose. This is likely a prescribing error.",
+    "source": "Clinical pharmacology",
+    "evidence_level": "well-documented"
+  },
+  "aspirin+metformin": {
+    "risk_level": "none",
+    "severity": "none",
+    "mechanism": "No significant interaction",
+    "clinical_effect": "Safe combination, commonly used together in diabetic patients for cardiovascular protection",
+    "recommendation": "No special precautions. Standard monitoring for each medication.",
+    "source": "Clinical practice",
+    "evidence_level": "well-documented"
+  },
+  "warfarin+metformin": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "No direct interaction, but both require monitoring",
+    "clinical_effect": "Generally safe combination. Metformin may rarely affect warfarin metabolism.",
+    "recommendation": "Monitor INR as usual for warfarin. Standard diabetes monitoring for metformin.",
+    "source": "Clinical practice",
+    "evidence_level": "moderate"
+  },
+  "amlodipine+lisinopril": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "Complementary mechanisms - calcium channel blocker + ACE inhibitor",
+    "clinical_effect": "Additive blood pressure lowering effect. Often used together for better BP control.",
+    "recommendation": "Monitor blood pressure. Watch for excessive hypotension, especially when initiating or increasing doses.",
+    "source": "Clinical practice guidelines",
+    "evidence_level": "well-documented"
+  },
+  "levothyroxine+atorvastatin": {
+    "risk_level": "none",
+    "severity": "none",
+    "mechanism": "No significant interaction",
+    "clinical_effect": "Safe combination, commonly prescribed together",
+    "recommendation": "No special precautions. Monitor TSH and lipids as clinically indicated.",
+    "source": "Clinical practice",
+    "evidence_level": "well-documented"
+  },
+  "gabapentin+metformin": {
+    "risk_level": "none",
+    "severity": "none",
+    "mechanism": "No significant interaction",
+    "clinical_effect": "Safe combination, often used together in diabetic neuropathy",
+    "recommendation": "No special precautions. Standard monitoring for each medication.",
+    "source": "Clinical practice",
+    "evidence_level": "well-documented"
+  },
+  "tramadol+omeprazole": {
+    "risk_level": "low",
+    "severity": "minor",
+    "mechanism": "Minimal interaction. Omeprazole may slightly affect tramadol metabolism.",
+    "clinical_effect": "Generally safe combination. Possible minor changes in tramadol effectiveness.",
+    "recommendation": "No special precautions. Monitor pain control and side effects as usual.",
+    "source": "Clinical pharmacology",
+    "evidence_level": "moderate"
+  }
+}
