@@ -1,0 +1,30 @@
+# Pharma-Safe Lens - Backend Dependencies
+# PHASE 0 - CPU-only libraries (NO GPU, NO MODELS yet)
+
+# Core framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+pydantic==2.5.3
+
+# OCR (CPU-only) - Phase 1
+# Using EasyOCR for Windows compatibility (CPU-only)
+easyocr==1.7.0
+pytesseract==0.3.10
+Pillow==10.2.0
+opencv-python==4.9.0.80
+
+# Data handling
+python-multipart==0.0.6
+aiofiles==23.2.1
+
+# Utilities
+python-dotenv==1.0.0
+python-Levenshtein==0.21.1  # Fuzzy matching for OCR noise tolerance
+
+# Testing
+pytest==7.4.4
+pytest-asyncio==0.23.3
+httpx==0.26.0
+
+# NOTE: MedGemma and transformers will be added in Phase 3
+# and will ONLY run on Kaggle, not locally

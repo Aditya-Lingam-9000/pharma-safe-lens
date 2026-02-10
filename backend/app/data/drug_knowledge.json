@@ -1,0 +1,62 @@
+{
+  "aspirin": {
+    "brand_names": ["ecosprin", "disprin", "aspro", "bayer aspirin"],
+    "common_misspellings": ["asprin", "aspirine", "aspr in"]
+  },
+  "warfarin": {
+    "brand_names": ["coumadin", "jantoven", "marevan"],
+    "common_misspellings": ["warfrin", "warfarine", "warfarin"]
+  },
+  "metformin": {
+    "brand_names": ["glucophage", "glumetza", "riomet", "fortamet"],
+    "common_misspellings": ["metformin", "metforin", "met formin"]
+  },
+  "ibuprofen": {
+    "brand_names": ["advil", "motrin", "nurofen", "brufen"],
+    "common_misspellings": ["ibuprofin", "ibuprof en", "ibuproffen"]
+  },
+  "lisinopril": {
+    "brand_names": ["prinivil", "zestril", "qbrelis"],
+    "common_misspellings": ["lisinopril", "lisinopril", "lisino pril"]
+  },
+  "atorvastatin": {
+    "brand_names": ["lipitor", "torvast", "atorlip"],
+    "common_misspellings": ["atorvastatin", "atorva statin", "atorvastat in"]
+  },
+  "amlodipine": {
+    "brand_names": ["norvasc", "amlovas", "amlip"],
+    "common_misspellings": ["amlodipine", "amlodi pine", "amlodipin"]
+  },
+  "omeprazole": {
+    "brand_names": ["prilosec", "losec", "omez"],
+    "common_misspellings": ["omeprazole", "omepra zole", "omeprazol"]
+  },
+  "levothyroxine": {
+    "brand_names": ["synthroid", "levoxyl", "eltroxin"],
+    "common_misspellings": ["levothyroxine", "levothy roxine", "levothyroxin"]
+  },
+  "simvastatin": {
+    "brand_names": ["zocor", "simvotin", "simcard"],
+    "common_misspellings": ["simvastatin", "simva statin", "simvastat in"]
+  },
+  "losartan": {
+    "brand_names": ["cozaar", "losacar", "repace"],
+    "common_misspellings": ["losartan", "losar tan", "losart an"]
+  },
+  "gabapentin": {
+    "brand_names": ["neurontin", "gabapin", "gralise"],
+    "common_misspellings": ["gabapentin", "gabapen tin", "gabapent in"]
+  },
+  "clopidogrel": {
+    "brand_names": ["plavix", "clopivas", "deplatt"],
+    "common_misspellings": ["clopidogrel", "clopido grel", "clopidogr el"]
+  },
+  "pantoprazole": {
+    "brand_names": ["protonix", "pantop", "pan"],
+    "common_misspellings": ["pantoprazole", "pantopra zole", "pantoprazol"]
+  },
+  "tramadol": {
+    "brand_names": ["ultram", "tramal", "zydol"],
+    "common_misspellings": ["tramadol", "trama dol", "tramad ol"]
+  }
+}
