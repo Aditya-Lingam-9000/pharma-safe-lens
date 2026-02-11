@@ -1,81 +1,43 @@
-"""
-Safety Guardrails - Enforce responsible AI usage.
-
-PHASE 4 - Sub-Phase 4.1
-"""
-
-from typing import Dict, Any
 import re
+from typing import Tuple
 
-
-class SafetyGuardrails:
+class SafetyGuard:
     """
-    Enforces safety rules on all outputs.
-    Prevents medical advice, dosage recommendations, etc.
+    Safety Guardrails for MedGemma output.
+    Blocks hallucinated medical advice, dosages, and prescriptions.
     """
     
-    # Forbidden patterns that indicate medical advice
-    FORBIDDEN_PATTERNS = [
-        r"take\s+\d+\s*(mg|ml|tablets?|pills?)",  # Dosage instructions
-        r"stop\s+taking",  # Medication cessation advice
-        r"start\s+taking",  # Medication initiation advice
-        r"increase\s+dose",  # Dosage changes
-        r"decrease\s+dose",
-        r"you\s+should\s+(not\s+)?take",  # Direct medication advice
+    # Strict patterns that should NEVER appear in the output
+    DANGEROUS_PATTERNS = [
+        r"\b(take|use|consume)\s+\d+(mg|g|ml|tablets|pills)",  # e.g., "take 500mg"
+        r"\b(prescribe|prescription)",                        # e.g., "I prescribe"
+        r"\b(diagnose|diagnosis)",                            # e.g., "I diagnose you"
+        r"\b(stop|discontinue)\s+(taking|using)\s+immediately",# Dangerous advice
+        r"\b(increase|decrease)\s+(the\s+)?dose",            # Dosage change
+        r"\b(treatment\s+plan)",                              # Medical planning
     ]
-    
-    REQUIRED_DISCLAIMER = (
-        "⚠️ IMPORTANT: This is an informational tool only. "
-        "Always consult a qualified healthcare professional before making "
-        "any decisions about your medications."
-    )
-    
+
     @staticmethod
-    def validate_output(text: str) -> tuple[bool, str]:
+    def validate_output(text: str) -> Tuple[bool, str]:
         """
-        Validate that output doesn't contain medical advice.
+        Check if the text contains any dangerous patterns.
         
         Args:
-            text: Generated text to validate
+            text (str): The AI-generated text.
             
         Returns:
-            Tuple of (is_safe, reason)
+            (bool, str): (is_safe, sanitized_text_or_warning)
         """
-        for pattern in SafetyGuardrails.FORBIDDEN_PATTERNS:
+        if not text:
+            return False, "Error: Empty output."
+
+        # Check for dangerous patterns
+        for pattern in SafetyGuard.DANGEROUS_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
-                return False, f"Contains forbidden medical advice pattern: {pattern}"
+                return False, "⚠️ SAFETY ALERT: The AI output contained potential medical advice or dosage instructions, which has been blocked for your safety. Please consult a doctor."
+
+        # Check for mandatory disclaimer (soft check, or enforce injection)
+        # We don't block if missing, but we append it if missing in the final app.
+        # Here we just validate safety.
         
-        return True, "Output is safe"
-    
-    @staticmethod
-    def add_disclaimer(response: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Add mandatory safety disclaimer to response.
-        
-        Args:
-            response: API response dictionary
-            
-        Returns:
-            Response with disclaimer added
-        """
-        response["disclaimer"] = SafetyGuardrails.REQUIRED_DISCLAIMER
-        return response
-    
-    @staticmethod
-    def sanitize_explanation(explanation: str) -> str:
-        """
-        Remove any potentially harmful advice from explanation.
-        
-        Args:
-            explanation: Generated explanation text
-            
-        Returns:
-            Sanitized explanation
-        """
-        # TODO: Implement in Phase 4, Sub-Phase 4.1
-        # For now, just validate
-        is_safe, reason = SafetyGuardrails.validate_output(explanation)
-        if not is_safe:
-            raise ValueError(f"Unsafe output detected: {reason}")
-        
-        return explanation
+        return True, text
