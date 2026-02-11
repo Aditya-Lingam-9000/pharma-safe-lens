@@ -28,7 +28,7 @@ STRICT RULES:
 5. ALWAYS advise consulting a healthcare professional.
 """
 
-    EXPLANATION_PROMPT = """[INST]
+    EXPLANATION_PROMPT = """<start_of_turn>user
 System: {system_prompt}
 
 Task: Explain the following drug interaction to a patient.
@@ -37,25 +37,26 @@ Verified Facts:
 - Drug A: {drug_a}
 - Drug B: {drug_b}
 - Risk Level: {risk_level}
-- Explanation of Mechanism: {reason}
 - Clinical Effect: {effect}
 - Recommendation: {recommendation}
 
 Instructions:
-- Summarize the risk in plain English.
-- Explain *why* it is dangerous (mechanism/effect).
-- State what the patient should watch out for.
+- Summarize the risk in simple language.
+- Explain clearly *why* it is dangerous.
+- State what to watch out for.
 - End with a mandatory disclaimer.
-[/INST]"""
+<end_of_turn>
+<start_of_turn>model"""
 
-    TRANSLATION_PROMPT = """[INST]
+    TRANSLATION_PROMPT = """<start_of_turn>user
 System: You are a medical translator. Translate the text preserving safety warnings exactly.
 
 Original ({source_lang}): {original_text}
 Target Language: {target_lang}
 
 Translation:
-[/INST]"""
+<end_of_turn>
+<start_of_turn>model"""
 
     SAFETY_DISCLAIMER = """\n\n⚠️ **IMPORTANT**: This information is for educational purposes only and does not constitute medical advice. Always consult your doctor or pharmacist before changing your medication regimen."""
 
