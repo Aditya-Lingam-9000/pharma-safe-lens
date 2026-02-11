@@ -34,6 +34,9 @@ class SafetyGuard:
         # Check for dangerous patterns
         for pattern in SafetyGuard.DANGEROUS_PATTERNS:
             if re.search(pattern, text, re.IGNORECASE):
+                # For debugging, we can log which pattern matched
+                # match = re.search(pattern, text, re.IGNORECASE)
+                # print(f"DEBUG: Blocked by pattern: {pattern} -> {match.group(0)}")
                 return False, "⚠️ SAFETY ALERT: The AI output contained potential medical advice or dosage instructions, which has been blocked for your safety. Please consult a doctor."
 
         # Check for mandatory disclaimer (soft check, or enforce injection)

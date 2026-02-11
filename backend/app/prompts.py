@@ -42,7 +42,9 @@ Verified Facts:
 Instructions:
 - Summarize the risk in simple language.
 - Explain clearly *why* it is dangerous.
-- State what to watch out for.
+- State what to watch out for (symptoms).
+- DO NOT mention specific numbers, doses, or lab values (like INR targets).
+- DO NOT give a treatment plan (e.g., "avoid alcohol"). Only state facts.
 - End with a mandatory disclaimer."""
 
     TRANSLATION_PROMPT = """System: You are a medical translator. Translate the text preserving safety warnings exactly.
