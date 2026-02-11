@@ -17,51 +17,92 @@ class PromptTemplates:
     - No diagnosis or prescription
     """
     
-    EXPLANATION_PROMPT = """You are a medical safety assistant helping patients understand drug interactions.
+    # System Prompt to set the behavior
+    SYSTEM_PROMPT = """You are MedGemma, a helpful and safety-focused medical AI assistant.
+Your goal is to explain verified drug interactions to patients using simple, clear language.
+STRICT RULES:
+1. ONLY use the verified facts provided in the prompt.
+2. DO NOT hallucinate or makeup new interactions.
+3. DO NOT give medical advice or prescribe medication.
+4. IF unknown/insufficient data, state that clearly.
+5. ALWAYS advise consulting a healthcare professional.
+"""
 
-Given the following VERIFIED interaction data:
-Drug A: {drug_a}
-Drug B: {drug_b}
-Risk Level: {risk_level}
-Verified Reason: {reason}
+    EXPLANATION_PROMPT = """[INST]
+System: {system_prompt}
 
-Your task:
-1. Explain this interaction risk in simple, patient-friendly language
-2. Use ONLY the verified information provided above
-3. DO NOT add new facts or medical advice
-4. DO NOT suggest dosage changes
-5. Always remind the user to consult a healthcare professional
+Task: Explain the following drug interaction to a patient.
 
-Generate a clear, concise explanation:"""
+Verified Facts:
+- Drug A: {drug_a}
+- Drug B: {drug_b}
+- Risk Level: {risk_level}
+- Explanation of Mechanism: {reason}
+- Clinical Effect: {effect}
+- Recommendation: {recommendation}
 
-    TRANSLATION_PROMPT = """You are a medical translator. Translate the following drug interaction explanation to {target_language}.
+Instructions:
+- Summarize the risk in plain English.
+- Explain *why* it is dangerous (mechanism/effect).
+- State what the patient should watch out for.
+- End with a mandatory disclaimer.
+[/INST]"""
 
-Original (English): {original_text}
+    TRANSLATION_PROMPT = """[INST]
+System: You are a medical translator. Translate the text preserving safety warnings exactly.
 
-Rules:
-1. Preserve the exact meaning
-2. Keep safety warnings intact
-3. Do NOT add medical advice
-4. Maintain patient-friendly tone
+Original ({source_lang}): {original_text}
+Target Language: {target_lang}
 
-Translation:"""
+Translation:
+[/INST]"""
 
-    SAFETY_DISCLAIMER = """⚠️ IMPORTANT: This is an informational tool only. Always consult a qualified healthcare professional before making any decisions about your medications."""
+    SAFETY_DISCLAIMER = """\n\n⚠️ **IMPORTANT**: This information is for educational purposes only and does not constitute medical advice. Always consult your doctor or pharmacist before changing your medication regimen."""
 
     @staticmethod
-    def format_explanation_prompt(drug_a: str, drug_b: str, risk_level: str, reason: str) -> str:
-        """Format the explanation generation prompt."""
+    def format_explanation_prompt(interaction_data: dict) -> str:
+        """
+        Format the explanation prompt using the interaction verification data.
+        
+        Args:
+            interaction_data (dict): Dictionary containing interaction details
+                                   (drug_pair, risk_level, mechanism, clinical_effect, recommendation)
+        """
+        # Extract drugs from the pair tuple or string
+        drugs = interaction_data.get('drug_pair')
+        if isinstance(drugs, tuple) or isinstance(drugs, list):
+            drug_a, drug_b = drugs[0], drugs[1]
+        else:
+            # Fallback if just a string key
+            parts = str(drugs).split('+')
+            drug_a = parts[0] if len(parts) > 0 else "Unknown"
+            drug_b = parts[1] if len(parts) > 1 else "Unknown"
+
         return PromptTemplates.EXPLANATION_PROMPT.format(
-            drug_a=drug_a,
-            drug_b=drug_b,
-            risk_level=risk_level,
-            reason=reason
+            system_prompt=PromptTemplates.SYSTEM_PROMPT,
+            drug_a=drug_a.title(),
+            drug_b=drug_b.title(),
+            risk_level=interaction_data.get('risk_level', 'Unknown').upper(),
+            reason=interaction_data.get('mechanism', 'No mechanism data available.'),
+            effect=interaction_data.get('clinical_effect', 'No clinical effect data available.'),
+            recommendation=interaction_data.get('recommendation', 'Consult your doctor.')
         )
-    
+
+    @staticmethod
+    def get_safety_disclaimer() -> str:
+        return PromptTemplates.SAFETY_DISCLAIMER
+
     @staticmethod
     def format_translation_prompt(original_text: str, target_language: str) -> str:
-        """Format the translation prompt."""
+        """
+        Format the translation prompt.
+        
+        Args:
+            original_text (str): The text to translate
+            target_language (str): The target language (e.g., "Spanish", "Hindi")
+        """
         return PromptTemplates.TRANSLATION_PROMPT.format(
+            source_lang="English",
             original_text=original_text,
-            target_language=target_language
+            target_lang=target_language
         )
