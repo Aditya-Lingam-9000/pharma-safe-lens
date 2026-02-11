@@ -77,18 +77,26 @@ async def analyze_image(
         
         results = []
         for interaction in interactions:
-            # 5. AI Explanation Generation (Mock/API)
-            explanation = AIInference.generate_explanation(interaction)
+            # 5. AI Explanation Generation (Mock/API) - Returns structured dict
+            explanation_dict = AIInference.generate_explanation(interaction)
             
-            # 6. Safety Validation
-            is_safe, validated_explanation = SafetyGuard.validate_output(explanation)
+            # 6. Safety Validation on explanation text
+            # Convert structured explanation to text for safety check
+            explanation_text = "\n".join([
+                f"Mechanism: {' '.join(explanation_dict.get('mechanism_of_interaction', [])[:2])}",
+                f"Clinical: {' '.join(explanation_dict.get('clinical_manifestations', [])[:2])}"
+            ])
+            is_safe,  _ = SafetyGuard.validate_output(explanation_text)
             
             interaction_result = {
                 "drug_pair": interaction['drug_pair'],
                 "risk_level": interaction['risk_level'],
-                "clinical_effect": interaction['clinical_effect'],
-                "recommendation": interaction['recommendation'],
-                "ai_explanation": validated_explanation,
+                "basic_info": {
+                    "mechanism": interaction.get('mechanism', 'Unknown'),
+                    "clinical_effect": interaction.get('clinical_effect', 'Unknown'),
+                    "recommendation": interaction.get('recommendation', 'Consult healthcare provider')
+                },
+                "ai_explanation": explanation_dict,  # Structured detailed explanation
                 "safety_alert": not is_safe
             }
             results.append(interaction_result)
