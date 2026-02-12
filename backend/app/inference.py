@@ -155,24 +155,45 @@ class RealMedGemmaInference:
         This will be implemented in Phase 6 Kaggle deployment.
         """
         try:
+            print(f"   📥 Importing PyTorch and Transformers...")
             import torch
             from transformers import AutoTokenizer, AutoModelForCausalLM
             
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
-            print(f"🔧 Loading MedGemma model on {self.device}...")
+            print(f"   🖥️  Device detected: {self.device}")
+            
+            if self.device == "cpu":
+                print(f"   ⚠️  WARNING: No GPU detected! Model will be VERY slow on CPU.")
+                print(f"   💡 Enable GPU in Kaggle: Settings → Accelerator → GPU T4 x2")
+            
+            print(f"   📦 Loading MedGemma model: {model_name}")
+            print(f"   ⏳ This may take 5-10 minutes (downloading ~13GB)...")
             
             self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            print(f"   ✅ Tokenizer loaded")
+            
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
                 torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
                 device_map="auto"
             )
+            print(f"   ✅ Model loaded successfully!")
+            print(f"   💾 Model size: ~13GB")
+            print(f"   🎮 Running on: {self.device}")
             
-            print(f"✅ MedGemma model loaded successfully on {self.device}")
             return True
             
+        except ImportError as e:
+            print(f"   ❌ ImportError: {e}")
+            print(f"   💡 Install required packages:")
+            print(f"      pip install torch transformers accelerate")
+            return False
         except Exception as e:
-            print(f"❌ Failed to load MedGemma model: {e}")
+            print(f"   ❌ Failed to load MedGemma model: {e}")
+            print(f"   💡 Check:")
+            print(f"      - Internet connection (Kaggle Internet must be ON)")
+            print(f"      - GPU availability (enable GPU T4 x2 in settings)")
+            print(f"      - Disk space (~15GB needed)")
             return False
     
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:

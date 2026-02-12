@@ -13,12 +13,26 @@ from backend.app.safety import SafetyGuard
 from backend.app.inference import AIInference, RealMedGemmaInference
 
 # Initialize real MedGemma model (do this at module level, before endpoint)
+print("\n" + "="*70)
+print("🚀 INITIALIZING PHARMA-SAFE LENS BACKEND")
+print("="*70)
+
 real_inference = RealMedGemmaInference()
+print("📦 Attempting to load MedGemma model...")
 model_loaded = real_inference.load_model("google/medgemma-7b")
 
 if not model_loaded:
-    print("⚠️ Failed to load MedGemma, falling back to mock")
+    print("⚠️  WARNING: Failed to load MedGemma, falling back to MOCK inference")
+    print("   Possible reasons:")
+    print("   - Missing packages: torch, transformers")
+    print("   - No GPU available")
+    print("   - Model download failed")
+    print("   → Install: pip install torch transformers accelerate")
+    print("="*70)
     real_inference = None
+else:
+    print("✅ SUCCESS: Real MedGemma model loaded and ready!")
+    print("="*70)
 
 # Router initialization
 router = APIRouter()
