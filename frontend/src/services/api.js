@@ -2,13 +2,14 @@ import axios from 'axios';
 
 // ⚠️ UPDATE THIS with your ngrok URL from Kaggle notebook
 // Example: 'https://a1b2-c3d4-e5f6.ngrok.io'
-const API_BASE_URL = 'http://localhost:8000'; // Default for local testing
+const API_BASE_URL = "https://unhurting-nonmediative-deegan.ngrok-free.dev"; // Default for local testing
 
 const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: 90000, // 90 seconds for MedGemma inference + OCR
   headers: {
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'ngrok-skip-browser-warning': 'true' // Required for ngrok free tier
   }
 });
 
@@ -22,16 +23,21 @@ export const uploadImage = async (imageFile) => {
   formData.append('file', imageFile);
   
   try {
-    const response = await api.post('/analyze-image', formData, {
+    const response = await api.post('/api/v1/analyze-image', formData, {
       headers: {
-        'Content-Type': 'multipart/form-data'
+        'Content-Type': 'multipart/form-data',
+        'ngrok-skip-browser-warning': 'true' // Add header to POST request too
       }
     });
     return response.data;
   } catch (error) {
+    // Log the full error for debugging
+    console.error('Full error object:', error);
+    console.error('Error response:', error.response);
+    
     if (error.response) {
       // Server responded with error status
-      throw new Error(error.response.data.detail || 'Server error occurred');
+      throw new Error(error.response.data.detail || `Server error: ${error.response.status}`);
     } else if (error.request) {
       // Request made but no response
       throw new Error('No response from server. Check if backend is running.');

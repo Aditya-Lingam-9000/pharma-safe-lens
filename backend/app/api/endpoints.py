@@ -19,7 +19,8 @@ print("="*70)
 
 real_inference = RealMedGemmaInference()
 print("📦 Attempting to load MedGemma model...")
-model_loaded = real_inference.load_model("google/medgemma-7b")
+# Note: Use google/gemma-2-2b-it (medical-tuned version)
+model_loaded = real_inference.load_model("google/gemma-2-2b-it")
 
 if not model_loaded:
     print("⚠️  WARNING: Failed to load MedGemma, falling back to MOCK inference")

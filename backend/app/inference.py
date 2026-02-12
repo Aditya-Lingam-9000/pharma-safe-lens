@@ -149,10 +149,14 @@ class RealMedGemmaInference:
         self.tokenizer = None
         self.device = None
     
-    def load_model(self, model_name: str = "google/medgemma-7b"):
+    def load_model(self, model_name: str = "google/gemma-2-2b-it"):
         """
-        Load real MedGemma model on Kaggle GPU.
-        This will be implemented in Phase 6 Kaggle deployment.
+        Load Gemma model (medical instruction-tuned) on Kaggle GPU.
+        
+        Available models:
+        - google/gemma-2-2b-it (2B parameters, instruction-tuned, recommended)
+        - google/gemma-2-9b-it (9B parameters, more accurate but slower)
+        - google/gemma-7b (7B base model)
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
