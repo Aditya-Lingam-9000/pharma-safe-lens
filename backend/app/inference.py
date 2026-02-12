@@ -398,6 +398,13 @@ class RealMedGemmaInference:
             inference_time = time.time() - start_time
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s ({len(outputs[0]) - input_length} tokens)")
             
+            # DEBUG: Print raw output to see what MedGemma generates
+            print(f"\n{'='*60}")
+            print(f"📝 RAW MEDGEMMA OUTPUT:")
+            print(f"{'='*60}")
+            print(generated_text[:2000])  # First 2000 chars
+            print(f"{'='*60}\n")
+            
             # Parse output into structured format
             return self._parse_output_to_structure(generated_text, interaction_data)
             
@@ -411,7 +418,7 @@ class RealMedGemmaInference:
     def _parse_output_to_structure(self, text: str, interaction_data: Dict) -> Dict:
         """
         Parse MedGemma's free-text output into structured format for frontend.
-        Extracts sections and formats them as the frontend expects.
+        ROBUST parsing that handles various output formats.
         """
         import re
         
@@ -419,63 +426,12 @@ class RealMedGemmaInference:
         drug1 = drug_pair[0].title() if isinstance(drug_pair, (list, tuple)) else "Drug"
         drug2 = drug_pair[1].title() if isinstance(drug_pair, (list, tuple)) and len(drug_pair) > 1 else "Drug"
         
-        # Helper function to extract section content
-        def extract_section(text, section_names):
-            """Extract content between section headers."""
-            for name in section_names:
-                # Try to find section with various formats
-                patterns = [
-                    rf'(?:#{1,3}\s*)?{name}[:\s]*\n(.*?)(?=\n(?:#{1,3}\s*)?\d*\.?\s*[A-Z][A-Z\s]+:|$)',
-                    rf'\d+\.\s*{name}[:\s]*\n?(.*?)(?=\n\d+\.|$)',
-                    rf'{name}[:\s]+(.*?)(?=\n[A-Z][A-Z]+:|$)'
-                ]
-                for pattern in patterns:
-                    match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-                    if match:
-                        return match.group(1).strip()
-            return None
+        print(f"   📝 Parsing MedGemma output ({len(text)} chars)...")
         
-        # Helper to split content into points
-        def split_into_points(content, min_points=3):
-            """Split content into individual points."""
-            if not content:
-                return []
-            
-            points = []
-            # Try numbered points first (1. or - or •)
-            lines = re.split(r'\n(?=\d+\.|[-•]\s)', content)
-            
-            for line in lines:
-                line = line.strip()
-                # Clean up numbering
-                line = re.sub(r'^[\d]+\.\s*', '', line)
-                line = re.sub(r'^[-•]\s*', '', line)
-                if line and len(line) > 20:  # Skip very short fragments
-                    points.append(line)
-            
-            # If no numbered points, split by sentences
-            if len(points) < min_points:
-                sentences = re.split(r'(?<=[.!?])\s+', content)
-                points = []
-                current_point = ""
-                for sent in sentences:
-                    current_point += sent + " "
-                    if len(current_point) > 100:  # Group sentences
-                        points.append(current_point.strip())
-                        current_point = ""
-                if current_point.strip():
-                    points.append(current_point.strip())
-            
-            return points[:7]  # Max 7 points per section
+        # Clean the text
+        text = text.strip()
         
-        # Extract each section from MedGemma's output
-        mechanism_content = extract_section(text, ['MECHANISM', 'Mechanism of Interaction', 'How.*interact'])
-        symptoms_content = extract_section(text, ['SYMPTOMS', 'CLINICAL', 'Clinical Manifestations', 'Effects'])
-        risk_content = extract_section(text, ['RISK', 'Risk Factors', 'Who is at risk'])
-        monitoring_content = extract_section(text, ['MONITORING', 'What to watch', 'Monitor'])
-        alternatives_content = extract_section(text, ['ALTERNATIVES', 'Alternative', 'Safer options'])
-        
-        # Build structured output with real MedGemma content
+        # Initialize result
         result = {
             "mechanism_of_interaction": [],
             "clinical_manifestations": [],
@@ -484,50 +440,123 @@ class RealMedGemmaInference:
             "alternative_suggestions": []
         }
         
-        # Parse each section
-        if mechanism_content:
-            result["mechanism_of_interaction"] = split_into_points(mechanism_content)
+        # Try to find numbered sections (1. MECHANISM, 2. SYMPTOMS, etc.)
+        section_patterns = [
+            # Pattern: "1. MECHANISM:" or "1. MECHANISM\n" or "**1. MECHANISM**"
+            (r'1\.?\s*(?:\*\*)?MECHANISM[:\s\*]*(.+?)(?=2\.?\s*(?:\*\*)?(?:SYMPTOMS|CLINICAL)|$)', 'mechanism_of_interaction'),
+            (r'2\.?\s*(?:\*\*)?(?:SYMPTOMS|CLINICAL)[:\s\*]*(.+?)(?=3\.?\s*(?:\*\*)?RISK|$)', 'clinical_manifestations'),
+            (r'3\.?\s*(?:\*\*)?RISK[:\s\*]*(.+?)(?=4\.?\s*(?:\*\*)?MONITOR|$)', 'risk_factors'),
+            (r'4\.?\s*(?:\*\*)?MONITOR[:\s\*]*(.+?)(?=5\.?\s*(?:\*\*)?ALTERNATIVE|$)', 'monitoring_recommendations'),
+            (r'5\.?\s*(?:\*\*)?ALTERNATIVE[:\s\*]*(.+?)(?=Consult|$)', 'alternative_suggestions'),
+        ]
         
-        if symptoms_content:
-            result["clinical_manifestations"] = split_into_points(symptoms_content)
+        found_sections = 0
+        for pattern, key in section_patterns:
+            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
+            if match:
+                content = match.group(1).strip()
+                # Split into points
+                points = self._split_to_points(content)
+                if points:
+                    result[key] = points
+                    found_sections += 1
         
-        if risk_content:
-            result["risk_factors"] = split_into_points(risk_content)
+        print(f"   📝 Found {found_sections} structured sections")
         
-        if monitoring_content:
-            result["monitoring_recommendations"] = split_into_points(monitoring_content)
-        
-        if alternatives_content:
-            result["alternative_suggestions"] = split_into_points(alternatives_content)
-        
-        # If parsing didn't find structured sections, use the full response as mechanism
-        if not any(result.values()):
-            # Model gave unstructured response - split by paragraphs
-            paragraphs = [p.strip() for p in text.split('\n\n') if p.strip() and len(p.strip()) > 50]
+        # If no structured sections found, try simpler approach
+        if found_sections == 0:
+            # Split by any headers or numbered items
+            lines = text.split('\n')
+            all_content = []
             
-            if paragraphs:
-                # Distribute paragraphs across sections
-                result["mechanism_of_interaction"] = paragraphs[:2] if len(paragraphs) > 0 else []
-                result["clinical_manifestations"] = paragraphs[2:4] if len(paragraphs) > 2 else [f"The interaction between {drug1} and {drug2} may cause various clinical effects. {text[:200]}"]
-                result["risk_factors"] = paragraphs[4:5] if len(paragraphs) > 4 else [f"Patients taking {drug1} with {drug2} should be aware of increased risks."]
-                result["monitoring_recommendations"] = paragraphs[5:6] if len(paragraphs) > 5 else ["Regular monitoring by healthcare provider is recommended."]
-                result["alternative_suggestions"] = paragraphs[6:7] if len(paragraphs) > 6 else ["Consult your healthcare provider for alternative options."]
-            else:
-                # Last resort: use the raw text
-                result["mechanism_of_interaction"] = [text[:500] if len(text) > 500 else text]
-                result["clinical_manifestations"] = [f"See mechanism section for details on {drug1}-{drug2} interaction effects."]
-                result["risk_factors"] = ["Consult your healthcare provider to assess your individual risk factors."]
-                result["monitoring_recommendations"] = ["Regular follow-up with your healthcare provider is recommended."]
-                result["alternative_suggestions"] = ["Discuss alternative treatment options with your healthcare provider."]
+            for line in lines:
+                line = line.strip()
+                # Skip empty lines and very short lines
+                if len(line) > 30:
+                    # Remove markdown formatting
+                    line = re.sub(r'\*\*|\*|#{1,3}\s*', '', line)
+                    # Remove leading numbers/bullets
+                    line = re.sub(r'^[\d]+[\.\)]\s*', '', line)
+                    line = re.sub(r'^[-•]\s*', '', line)
+                    if line:
+                        all_content.append(line)
+            
+            print(f"   📝 Extracted {len(all_content)} content lines")
+            
+            # Distribute content across sections
+            if all_content:
+                n = len(all_content)
+                # Mechanism gets first 40%
+                mech_end = max(1, int(n * 0.4))
+                # Clinical gets next 20%
+                clin_end = mech_end + max(1, int(n * 0.2))
+                # Risk gets next 15%
+                risk_end = clin_end + max(1, int(n * 0.15))
+                # Monitor gets next 15%
+                mon_end = risk_end + max(1, int(n * 0.15))
+                
+                result["mechanism_of_interaction"] = all_content[:mech_end]
+                result["clinical_manifestations"] = all_content[mech_end:clin_end] if mech_end < n else []
+                result["risk_factors"] = all_content[clin_end:risk_end] if clin_end < n else []
+                result["monitoring_recommendations"] = all_content[risk_end:mon_end] if risk_end < n else []
+                result["alternative_suggestions"] = all_content[mon_end:] if mon_end < n else []
         
-        # Ensure each section has at least some content
-        for key in result:
-            if not result[key]:
-                result[key] = [f"Please consult your healthcare provider for detailed information about {key.replace('_', ' ')}."]
+        # Ensure each section has content - use raw text segments as fallback
+        if not result["mechanism_of_interaction"] and text:
+            # Use first part of raw text
+            result["mechanism_of_interaction"] = [text[:500] if len(text) > 500 else text]
         
-        # Add the raw MedGemma response for debugging/transparency
-        result["_raw_response"] = text[:1000]  # First 1000 chars for debugging
+        if not result["clinical_manifestations"]:
+            result["clinical_manifestations"] = [f"The {drug1}-{drug2} interaction may lead to adverse clinical effects. Monitor for unusual symptoms and report any concerns to your healthcare provider."]
         
-        print(f"   📝 Parsed {sum(len(v) for v in result.values() if isinstance(v, list))} points from MedGemma response")
+        if not result["risk_factors"]:
+            result["risk_factors"] = [f"Patients with pre-existing conditions, elderly patients, and those on multiple medications may be at higher risk for {drug1}-{drug2} interaction effects."]
+        
+        if not result["monitoring_recommendations"]:
+            result["monitoring_recommendations"] = ["Regular monitoring of relevant lab values and clinical symptoms is recommended. Follow up with your healthcare provider as directed."]
+        
+        if not result["alternative_suggestions"]:
+            result["alternative_suggestions"] = ["Discuss potential alternative medications or dosing strategies with your healthcare provider if this interaction is a concern."]
+        
+        # Log what we parsed
+        total_points = sum(len(v) for v in result.values())
+        print(f"   ✅ Parsed {total_points} total points across all sections")
+        
+        # Add raw response for transparency
+        result["_raw_response"] = text[:1500]
         
         return result
+    
+    def _split_to_points(self, content: str) -> list:
+        """Split content into individual points/bullets."""
+        import re
+        
+        points = []
+        
+        # Try splitting by numbered items, bullets, or newlines
+        lines = re.split(r'\n(?=[\d•\-\*])', content)
+        
+        for line in lines:
+            line = line.strip()
+            # Clean up
+            line = re.sub(r'^[\d]+[\.\)]\s*', '', line)
+            line = re.sub(r'^[-•\*]\s*', '', line)
+            line = re.sub(r'\*\*|\*', '', line)  # Remove markdown bold
+            
+            if line and len(line) > 20:
+                points.append(line)
+        
+        # If we only got 1 big chunk, try splitting by sentences
+        if len(points) <= 1 and content:
+            sentences = re.split(r'(?<=[.!?])\s+', content)
+            points = []
+            current = ""
+            for sent in sentences:
+                current += sent + " "
+                if len(current) > 80:
+                    points.append(current.strip())
+                    current = ""
+            if current.strip():
+                points.append(current.strip())
+        
+        return points[:5]  # Max 5 points per section
