@@ -35,6 +35,16 @@ def _get_easyocr_reader():
     return _easyocr_reader if _easyocr_reader is not False else None
 
 
+def preload_ocr():
+    """Pre-initialize OCR engines at startup to avoid first-request delay."""
+    logger.info("🔤 Pre-loading OCR engines...")
+    reader = _get_easyocr_reader()
+    if reader:
+        logger.info("✅ EasyOCR pre-loaded successfully")
+    else:
+        logger.warning("⚠️ EasyOCR not available, will use Tesseract fallback")
+
+
 def preprocess_image(image_path: str) -> np.ndarray:
     """
     Preprocess image for better OCR accuracy.

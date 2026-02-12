@@ -7,7 +7,7 @@ import logging
 
 # Dependencies
 from backend.app.dependencies import get_drug_db, get_interaction_checker
-from backend.app.ocr import extract_text
+from backend.app.ocr import extract_text, preload_ocr
 from backend.app.safety import SafetyGuard
 
 from backend.app.inference import AIInference, RealMedGemmaInference
@@ -16,6 +16,9 @@ from backend.app.inference import AIInference, RealMedGemmaInference
 print("\n" + "="*70)
 print("🚀 INITIALIZING PHARMA-SAFE LENS BACKEND")
 print("="*70)
+
+# Pre-load OCR engines to avoid first-request timeout
+preload_ocr()
 
 real_inference = RealMedGemmaInference()
 print("📦 Attempting to load MedGemma model...")

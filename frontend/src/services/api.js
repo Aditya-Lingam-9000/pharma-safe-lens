@@ -6,7 +6,7 @@ const API_BASE_URL = "https://unhurting-nonmediative-deegan.ngrok-free.dev"; // 
 
 const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 90000, // 90 seconds for MedGemma inference + OCR
+  timeout: 180000, // 3 minutes: EasyOCR init (60s) + OCR (30s) + MedGemma (60s) + buffer
   headers: {
     'Accept': 'application/json',
     'ngrok-skip-browser-warning': 'true' // Required for ngrok free tier
