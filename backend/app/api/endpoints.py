@@ -8,8 +8,17 @@ import logging
 # Dependencies
 from backend.app.dependencies import get_drug_db, get_interaction_checker
 from backend.app.ocr import extract_text
-from backend.app.inference import AIInference
 from backend.app.safety import SafetyGuard
+
+from backend.app.inference import AIInference, RealMedGemmaInference
+
+# Initialize real MedGemma model (do this at module level, before endpoint)
+real_inference = RealMedGemmaInference()
+model_loaded = real_inference.load_model("google/medgemma-7b")
+
+if not model_loaded:
+    print("⚠️ Failed to load MedGemma, falling back to mock")
+    real_inference = None
 
 # Router initialization
 router = APIRouter()
@@ -78,7 +87,14 @@ async def analyze_image(
         results = []
         for interaction in interactions:
             # 5. AI Explanation Generation (Mock/API) - Returns structured dict
-            explanation_dict = AIInference.generate_explanation(interaction)
+            # Use real MedGemma if loaded, otherwise fallback to mock
+            if real_inference is not None:
+                # Format prompt for MedGemma
+                from backend.app.prompts import PromptTemplates
+                prompt = PromptTemplates.format_explanation_prompt(interaction)
+                explanation_dict = real_inference.generate_explanation(interaction, prompt)
+            else:
+                explanation_dict = AIInference.generate_explanation(interaction)
             
             # 6. Safety Validation on explanation text
             # Convert structured explanation to text for safety check
