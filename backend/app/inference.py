@@ -242,17 +242,39 @@ class RealMedGemmaInference:
                 "low_cpu_mem_usage": True,
             }
             
-            # Try to use Flash Attention 2 for faster inference
+            # Check if Flash Attention 2 is actually available
+            flash_attn_available = False
             try:
-                model_kwargs["attn_implementation"] = "flash_attention_2"
-                print(f"   ⚡ Flash Attention 2 enabled")
-            except:
-                print(f"   ℹ️  Using standard attention")
+                import flash_attn
+                flash_attn_available = True
+                print(f"   ⚡ Flash Attention 2 available")
+            except ImportError:
+                print(f"   ℹ️  Flash Attention 2 not installed, using standard attention")
             
-            self.model = AutoModelForCausalLM.from_pretrained(
-                model_name,
-                **model_kwargs
-            )
+            # Try loading with Flash Attention, fall back to standard if it fails
+            model_loaded = False
+            
+            if flash_attn_available:
+                try:
+                    model_kwargs["attn_implementation"] = "flash_attention_2"
+                    self.model = AutoModelForCausalLM.from_pretrained(
+                        model_name,
+                        **model_kwargs
+                    )
+                    print(f"   ⚡ Model loaded with Flash Attention 2")
+                    model_loaded = True
+                except Exception as e:
+                    print(f"   ⚠️  Flash Attention failed: {e}")
+                    print(f"   ℹ️  Falling back to standard attention...")
+                    model_kwargs.pop("attn_implementation", None)
+            
+            # Fallback: load without Flash Attention
+            if not model_loaded:
+                self.model = AutoModelForCausalLM.from_pretrained(
+                    model_name,
+                    **model_kwargs
+                )
+                print(f"   ✅ Model loaded with standard attention")
             
             # ===== MODEL OPTIMIZATION =====
             # Put model in evaluation mode
