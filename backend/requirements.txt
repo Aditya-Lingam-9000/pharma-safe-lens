@@ -28,13 +28,15 @@ pytest-asyncio==0.23.3
 httpx==0.26.0
 
 # MedGemma and AI/ML (Phase 6 - Real Model on Kaggle GPU)
-# Uncomment for real MedGemma inference:
+# GPU-optimized for Tesla T4 x2 on Kaggle
 torch>=2.0.0
 transformers>=4.36.0
 accelerate>=0.25.0
 sentencepiece>=0.1.99
 protobuf>=3.20.0
 
-# NOTE: These packages are large and GPU-required
-# They will be installed on Kaggle with GPU enabled
-# For local development, the mock inference will be used
+# Optional: Flash Attention 2 for faster inference (auto-installed on Kaggle)
+# flash-attn>=2.0.0  # Uncomment if needed
+
+# NOTE: These packages are installed on Kaggle with GPU T4 x2
+# For local development, mock inference is used automatically

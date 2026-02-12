@@ -37,7 +37,9 @@ if not model_loaded:
     print("="*70)
     real_inference = None
 else:
-    print("✅ SUCCESS: Real MedGemma model loaded and ready!")
+    # Warmup model for faster first inference
+    real_inference.warmup()
+    print("✅ SUCCESS: MedGemma model loaded and warmed up!")
     print("="*70)
 
 # Router initialization

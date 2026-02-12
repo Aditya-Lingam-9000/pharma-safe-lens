@@ -21,14 +21,25 @@ _easyocr_reader = None
 
 
 def _get_easyocr_reader():
-    """Lazy load EasyOCR reader to avoid import issues."""
+    """Lazy load EasyOCR reader with GPU acceleration."""
     global _easyocr_reader
     if _easyocr_reader is None:
         try:
             import easyocr
-            logger.info("Initializing EasyOCR reader (CPU-only)...")
-            _easyocr_reader = easyocr.Reader(['en'], gpu=False)
-            logger.info("EasyOCR reader initialized successfully")
+            import torch
+            
+            # Use GPU if available (Tesla T4 on Kaggle)
+            use_gpu = torch.cuda.is_available()
+            device_str = "GPU (CUDA)" if use_gpu else "CPU"
+            logger.info(f"Initializing EasyOCR reader on {device_str}...")
+            
+            _easyocr_reader = easyocr.Reader(
+                ['en'], 
+                gpu=use_gpu,
+                model_storage_directory='/kaggle/working/easyocr_models',
+                download_enabled=True
+            )
+            logger.info(f"✅ EasyOCR initialized on {device_str}")
         except Exception as e:
             logger.warning(f"Failed to initialize EasyOCR: {e}")
             _easyocr_reader = False  # Mark as failed
@@ -37,10 +48,16 @@ def _get_easyocr_reader():
 
 def preload_ocr():
     """Pre-initialize OCR engines at startup to avoid first-request delay."""
+    import torch
     logger.info("🔤 Pre-loading OCR engines...")
+    
+    if torch.cuda.is_available():
+        logger.info(f"   GPU detected: {torch.cuda.get_device_name(0)}")
+        logger.info(f"   VRAM: {torch.cuda.get_device_properties(0).total_memory / 1024**3:.1f} GB")
+    
     reader = _get_easyocr_reader()
     if reader:
-        logger.info("✅ EasyOCR pre-loaded successfully")
+        logger.info("✅ EasyOCR pre-loaded on GPU" if torch.cuda.is_available() else "✅ EasyOCR pre-loaded on CPU")
     else:
         logger.warning("⚠️ EasyOCR not available, will use Tesseract fallback")
 
