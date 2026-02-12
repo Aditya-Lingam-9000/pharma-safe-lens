@@ -149,19 +149,48 @@ class RealMedGemmaInference:
         self.tokenizer = None
         self.device = None
     
-    def load_model(self, model_name: str = "google/gemma-2-2b-it"):
+    def load_model(self, model_name: str = "google/medgemma-4b-it", hf_token: str = None):
         """
-        Load Gemma model (medical instruction-tuned) on Kaggle GPU.
+        Load MedGemma model from Google Health AI collection on Kaggle GPU.
         
-        Available models:
-        - google/gemma-2-2b-it (2B parameters, instruction-tuned, recommended)
-        - google/gemma-2-9b-it (9B parameters, more accurate but slower)
-        - google/gemma-7b (7B base model)
+        Official Model: google/medgemma-4b-it
+        Source: https://huggingface.co/collections/google/health-ai-developer-foundations-hai-def
+        
+        This is a GATED model - requires HuggingFace token with accepted license.
+        
+        Args:
+            model_name: HuggingFace model identifier (default: google/medgemma-4b-it)
+            hf_token: HuggingFace API token (required for gated models)
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
             import torch
+            import os
             from transformers import AutoTokenizer, AutoModelForCausalLM
+            
+            # Get HuggingFace token from parameter, environment, or Kaggle secrets
+            token = hf_token
+            if not token:
+                token = os.environ.get('HF_TOKEN') or os.environ.get('HUGGING_FACE_HUB_TOKEN')
+            
+            if not token:
+                # Try Kaggle secrets
+                try:
+                    from kaggle_secrets import UserSecretsClient
+                    user_secrets = UserSecretsClient()
+                    token = user_secrets.get_secret("HF_TOKEN")
+                    print(f"   🔑 Using HuggingFace token from Kaggle Secrets")
+                except:
+                    pass
+            
+            if not token:
+                print(f"   ❌ ERROR: HuggingFace token not found!")
+                print(f"   💡 MedGemma is a GATED model. You need to:")
+                print(f"      1. Go to https://huggingface.co/google/medgemma-4b-it")
+                print(f"      2. Accept the license agreement")
+                print(f"      3. Get your token from https://huggingface.co/settings/tokens")
+                print(f"      4. Add token as Kaggle Secret: 'HF_TOKEN'")
+                return False
             
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             print(f"   🖥️  Device detected: {self.device}")
@@ -171,18 +200,27 @@ class RealMedGemmaInference:
                 print(f"   💡 Enable GPU in Kaggle: Settings → Accelerator → GPU T4 x2")
             
             print(f"   📦 Loading MedGemma model: {model_name}")
-            print(f"   ⏳ This may take 5-10 minutes (downloading ~13GB)...")
+            print(f"   🔐 Using authenticated access (gated model)")
+            print(f"   ⏳ This may take 5-10 minutes (downloading ~8GB)...")
             
-            self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+            # Load tokenizer with authentication
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                model_name,
+                token=token,
+                trust_remote_code=True
+            )
             print(f"   ✅ Tokenizer loaded")
             
+            # Load model with authentication
             self.model = AutoModelForCausalLM.from_pretrained(
                 model_name,
-                torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
-                device_map="auto"
+                token=token,
+                torch_dtype=torch.bfloat16 if self.device == "cuda" else torch.float32,
+                device_map="auto",
+                trust_remote_code=True
             )
             print(f"   ✅ Model loaded successfully!")
-            print(f"   💾 Model size: ~13GB")
+            print(f"   💾 Model: MedGemma 4B Instruction-Tuned")
             print(f"   🎮 Running on: {self.device}")
             
             return True
@@ -195,9 +233,10 @@ class RealMedGemmaInference:
         except Exception as e:
             print(f"   ❌ Failed to load MedGemma model: {e}")
             print(f"   💡 Check:")
+            print(f"      - HuggingFace token is correct")
+            print(f"      - License accepted at https://huggingface.co/google/medgemma-4b-it")
             print(f"      - Internet connection (Kaggle Internet must be ON)")
             print(f"      - GPU availability (enable GPU T4 x2 in settings)")
-            print(f"      - Disk space (~15GB needed)")
             return False
     
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
