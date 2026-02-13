@@ -284,13 +284,15 @@ class RealMedGemmaInference:
             )
             print(f"   📝 Formatted input: {len(formatted_input)} chars")
             print(f"   📝 First 200 chars: {formatted_input[:200]}...")
+            print(f"   🧩 Tokenizer ids => pad:{self.tokenizer.pad_token_id} eos:{self.tokenizer.eos_token_id} bos:{self.tokenizer.bos_token_id}")
             
             # Tokenize
             inputs = self.tokenizer(
                 formatted_input,
                 return_tensors="pt",
                 truncation=True,
-                max_length=1024
+                max_length=1024,
+                add_special_tokens=False,
             ).to(self.model.device)
             
             input_length = inputs['input_ids'].shape[1]
@@ -300,11 +302,11 @@ class RealMedGemmaInference:
             with torch.inference_mode():
                 outputs = self.model.generate(
                     **inputs,
-                    max_new_tokens=512,
+                    max_new_tokens=384,
+                    min_new_tokens=64,
                     do_sample=False,
-                    temperature=1.0,
-                    pad_token_id=self.tokenizer.eos_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
+                    repetition_penalty=1.05,
+                    use_cache=True,
                 )
             
             # Extract ONLY the generated tokens (not the input)
@@ -319,7 +321,7 @@ class RealMedGemmaInference:
             print(f"   📝 First 20 token IDs: {generated_ids[:20]}")
 
             # If decoded text is empty, model may be emitting only special control tokens.
-            # Try sanitizing first, then fallback to a second generation strategy.
+            # Try sanitizing first, then fallback to deterministic plain-text prompting.
             if not generated_text.strip():
                 print("   ⚠️  Decoded text empty after removing special tokens")
                 print(f"   📝 Raw (with special tokens) preview: {generated_text_with_special[:300]}")
@@ -334,24 +336,37 @@ class RealMedGemmaInference:
                 generated_text = " ".join(sanitized.split())
 
             if not generated_text.strip():
-                print("   ⚠️  Still empty. Retrying with sampling fallback...")
+                print("   ⚠️  Still empty. Retrying with deterministic plain-text input...")
+                plain_prompt = (
+                    f"{prompt}\n\n"
+                    "Respond with exactly these 5 numbered sections and bullet points:\n"
+                    "1. MECHANISM\n2. SYMPTOMS\n3. RISK FACTORS\n4. MONITORING\n5. ALTERNATIVES"
+                )
+
+                plain_inputs = self.tokenizer(
+                    plain_prompt,
+                    return_tensors="pt",
+                    truncation=True,
+                    max_length=1024,
+                ).to(self.model.device)
+
+                plain_input_length = plain_inputs['input_ids'].shape[1]
                 with torch.inference_mode():
                     outputs_retry = self.model.generate(
-                        **inputs,
-                        max_new_tokens=384,
+                        **plain_inputs,
+                        max_new_tokens=320,
                         min_new_tokens=64,
-                        do_sample=True,
-                        temperature=0.7,
-                        top_p=0.9,
-                        repetition_penalty=1.1,
-                        pad_token_id=self.tokenizer.eos_token_id,
-                        eos_token_id=self.tokenizer.eos_token_id,
+                        do_sample=False,
+                        repetition_penalty=1.05,
+                        use_cache=True,
                     )
 
-                retry_tokens = outputs_retry[0][input_length:]
+                retry_tokens = outputs_retry[0][plain_input_length:]
+                retry_ids = retry_tokens.tolist()
                 retry_text = self.tokenizer.decode(retry_tokens, skip_special_tokens=True)
                 retry_text_with_special = self.tokenizer.decode(retry_tokens, skip_special_tokens=False)
                 print(f"   📝 Retry output tokens: {len(retry_tokens)}")
+                print(f"   📝 Retry first 20 token IDs: {retry_ids[:20]}")
 
                 if retry_text.strip():
                     generated_text = retry_text
