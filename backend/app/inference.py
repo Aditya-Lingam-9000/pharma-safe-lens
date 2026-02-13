@@ -140,10 +140,9 @@ class AIInference:
 # Real MedGemma 1.5 Integration (for Kaggle with GPU)
 class RealMedGemmaInference:
     """
-    MedGemma 1.5 4B model integration using transformers pipeline.
+    MedGemma 1.5 4B model integration using direct model.generate().
     
     Model: google/medgemma-1.5-4b-it
-    - Multimodal: Can process images AND text
     - Instruction-tuned for medical tasks
     - Optimized for Tesla T4 GPU
     
@@ -151,23 +150,22 @@ class RealMedGemmaInference:
     """
     
     def __init__(self):
-        self.pipe = None
+        self.model = None
+        self.tokenizer = None
         self.device = None
         self._is_warmed_up = False
         self.model_name = "google/medgemma-1.5-4b-it"
     
     def load_model(self, model_name: str = None, hf_token: str = None):
         """
-        Load MedGemma 1.5 using the pipeline API.
-        Much simpler and more reliable than manual loading.
+        Load MedGemma 1.5 model and tokenizer directly for full control.
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
             import torch
             import os
-            from transformers import pipeline
+            from transformers import AutoModelForCausalLM, AutoTokenizer
             
-            # Use provided model name or default to MedGemma 1.5
             if model_name:
                 self.model_name = model_name
             
@@ -195,7 +193,6 @@ class RealMedGemmaInference:
             
             if not token:
                 print(f"   ❌ ERROR: HuggingFace token not found!")
-                print(f"   💡 Add 'HF_TOKEN' to Kaggle Secrets")
                 return False
             
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -203,21 +200,22 @@ class RealMedGemmaInference:
             if self.device == "cuda":
                 gpu_name = torch.cuda.get_device_name(0)
                 gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                num_gpus = torch.cuda.device_count()
                 print(f"   🎮 GPU: {gpu_name} ({gpu_mem:.1f} GB)")
-                if num_gpus > 1:
-                    print(f"   🎮 Multi-GPU: {num_gpus} GPUs available")
-            else:
-                print(f"   ⚠️  WARNING: No GPU! This will be slow.")
             
             print(f"   📦 Loading MedGemma 1.5: {self.model_name}")
             print(f"   ⏳ Downloading model - please wait...")
             
-            # ===== LOAD MODEL USING PIPELINE =====
-            # This is the recommended approach for MedGemma 1.5
-            self.pipe = pipeline(
-                "text-generation",
-                model=self.model_name,
+            # Load tokenizer
+            self.tokenizer = AutoTokenizer.from_pretrained(
+                self.model_name,
+                token=token,
+                trust_remote_code=True,
+            )
+            print(f"   ✅ Tokenizer loaded")
+            
+            # Load model
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
                 token=token,
                 torch_dtype=torch.float16,
                 device_map="auto",
@@ -228,17 +226,12 @@ class RealMedGemmaInference:
             print(f"   💾 Model: {self.model_name}")
             print(f"   🎮 Device: {self.device}")
             
-            # Show GPU memory usage
             if self.device == "cuda":
                 allocated = torch.cuda.memory_allocated() / 1024**3
                 print(f"   📊 GPU Memory: {allocated:.1f}GB allocated")
             
             return True
             
-        except ImportError as e:
-            print(f"   ❌ ImportError: {e}")
-            print(f"   💡 pip install torch transformers accelerate")
-            return False
         except Exception as e:
             print(f"   ❌ Failed to load model: {e}")
             import traceback
@@ -247,109 +240,88 @@ class RealMedGemmaInference:
     
     def warmup(self):
         """Warm up the model with a simple query."""
-        if self.pipe is None or self._is_warmed_up:
+        if self.model is None or self._is_warmed_up:
             return
             
         print("   🔥 Warming up model...")
         try:
-            # Simple warmup query
-            _ = self.pipe(
-                "What is aspirin?",
-                max_new_tokens=20,
-                do_sample=False
-            )
+            import torch
+            test_input = self.tokenizer("Hello", return_tensors="pt").to(self.device)
+            with torch.no_grad():
+                _ = self.model.generate(**test_input, max_new_tokens=5)
             self._is_warmed_up = True
             print("   ✅ Model warmup complete!")
         except Exception as e:
-            print(f"   ⚠️  Warmup failed (non-critical): {e}")
+            print(f"   ⚠️  Warmup failed: {e}")
     
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
         """
         Generate drug interaction explanation using MedGemma 1.5.
-        
-        MedGemma 1.5 is instruction-tuned and requires CHAT MESSAGE FORMAT.
+        Uses direct model.generate() for full control over generation.
         """
-        if self.pipe is None:
+        if self.model is None or self.tokenizer is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
         
         import time
+        import torch
         
         start_time = time.time()
         
         try:
             print(f"   🧠 Generating explanation with MedGemma 1.5...")
-            print(f"   📝 Prompt length: {len(prompt)} chars")
+            print(f"   📝 Input prompt: {len(prompt)} chars")
             
-            # ===== CRITICAL: Use Chat Message Format for MedGemma 1.5 =====
-            # MedGemma 1.5 is instruction-tuned and expects messages format
+            # ===== FORMAT AS CHAT MESSAGE =====
             messages = [
-                {
-                    "role": "user",
-                    "content": prompt
-                }
+                {"role": "user", "content": prompt}
             ]
             
-            # Apply chat template to format the messages properly
-            tokenizer = self.pipe.tokenizer
-            formatted_prompt = tokenizer.apply_chat_template(
-                messages, 
-                tokenize=False, 
+            # Apply chat template
+            formatted_input = self.tokenizer.apply_chat_template(
+                messages,
+                tokenize=False,
                 add_generation_prompt=True
             )
+            print(f"   📝 Formatted input: {len(formatted_input)} chars")
+            print(f"   📝 First 200 chars: {formatted_input[:200]}...")
             
-            print(f"   📝 Formatted prompt length: {len(formatted_prompt)} chars")
+            # Tokenize
+            inputs = self.tokenizer(
+                formatted_input,
+                return_tensors="pt",
+                truncation=True,
+                max_length=1024
+            ).to(self.model.device)
             
-            # Generate using the formatted prompt
-            outputs = self.pipe(
-                formatted_prompt,
-                max_new_tokens=600,
-                do_sample=False,  # Greedy decoding for speed
-                return_full_text=False,  # Only return generated part
-                pad_token_id=tokenizer.eos_token_id,
-            )
+            input_length = inputs['input_ids'].shape[1]
+            print(f"   📝 Input tokens: {input_length}")
+            
+            # Generate with explicit parameters
+            with torch.inference_mode():
+                outputs = self.model.generate(
+                    **inputs,
+                    max_new_tokens=512,
+                    do_sample=False,
+                    temperature=1.0,
+                    pad_token_id=self.tokenizer.eos_token_id,
+                    eos_token_id=self.tokenizer.eos_token_id,
+                )
+            
+            # Extract ONLY the generated tokens (not the input)
+            generated_tokens = outputs[0][input_length:]
+            generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
             
             inference_time = time.time() - start_time
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
-            
-            # Extract generated text
-            generated_text = ""
-            
-            if isinstance(outputs, list) and len(outputs) > 0:
-                first_output = outputs[0]
-                if isinstance(first_output, dict) and "generated_text" in first_output:
-                    generated_text = first_output["generated_text"].strip()
-                elif isinstance(first_output, str):
-                    generated_text = first_output.strip()
-            elif isinstance(outputs, str):
-                generated_text = outputs.strip()
+            print(f"   📝 Output tokens: {len(generated_tokens)}")
             
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
             print(f"📝 RAW MEDGEMMA 1.5 OUTPUT:")
             print(f"{'='*60}")
-            print(generated_text[:2000] if len(generated_text) > 0 else "[EMPTY OUTPUT]")
+            print(generated_text[:2000] if generated_text else "[EMPTY]")
             print(f"{'='*60}")
             print(f"📝 Parsing MedGemma output ({len(generated_text)} chars)...\n")
-            
-            # If still empty, try alternative extraction
-            if len(generated_text) == 0:
-                print(f"⚠️  Empty generated text! Trying alternative...")
-                # Try with return_full_text=True as fallback
-                outputs2 = self.pipe(
-                    formatted_prompt,
-                    max_new_tokens=600,
-                    do_sample=False,
-                    return_full_text=True,
-                    pad_token_id=tokenizer.eos_token_id,
-                )
-                if outputs2 and isinstance(outputs2[0], dict):
-                    full_text = outputs2[0].get("generated_text", "")
-                    # Remove the prompt part
-                    if formatted_prompt in full_text:
-                        generated_text = full_text.replace(formatted_prompt, "").strip()
-                    else:
-                        generated_text = full_text[len(formatted_prompt):].strip()
-                    print(f"   📝 Alternative extraction: {len(generated_text)} chars")
             
             # Parse output into structured format
             return self._parse_output_to_structure(generated_text, interaction_data)
@@ -358,7 +330,6 @@ class RealMedGemmaInference:
             print(f"❌ Generation failed: {e}")
             import traceback
             traceback.print_exc()
-            # Fallback to mock if generation fails
             return AIInference.generate_explanation(interaction_data)
     
     def _parse_output_to_structure(self, text: str, interaction_data: Dict) -> Dict:
