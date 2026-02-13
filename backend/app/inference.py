@@ -309,22 +309,67 @@ class RealMedGemmaInference:
             
             # Extract ONLY the generated tokens (not the input)
             generated_tokens = outputs[0][input_length:]
+            generated_ids = generated_tokens.tolist()
             generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+            generated_text_with_special = self.tokenizer.decode(generated_tokens, skip_special_tokens=False)
             
             inference_time = time.time() - start_time
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
             print(f"   📝 Output tokens: {len(generated_tokens)}")
+            print(f"   📝 First 20 token IDs: {generated_ids[:20]}")
+
+            # If decoded text is empty, model may be emitting only special control tokens.
+            # Try sanitizing first, then fallback to a second generation strategy.
+            if not generated_text.strip():
+                print("   ⚠️  Decoded text empty after removing special tokens")
+                print(f"   📝 Raw (with special tokens) preview: {generated_text_with_special[:300]}")
+
+                sanitized = generated_text_with_special
+                for token_marker in [
+                    "<bos>", "<eos>", "<pad>",
+                    "<start_of_turn>", "<end_of_turn>",
+                    "<|begin_of_text|>", "<|end_of_text|>",
+                ]:
+                    sanitized = sanitized.replace(token_marker, " ")
+                generated_text = " ".join(sanitized.split())
+
+            if not generated_text.strip():
+                print("   ⚠️  Still empty. Retrying with sampling fallback...")
+                with torch.inference_mode():
+                    outputs_retry = self.model.generate(
+                        **inputs,
+                        max_new_tokens=384,
+                        min_new_tokens=64,
+                        do_sample=True,
+                        temperature=0.7,
+                        top_p=0.9,
+                        repetition_penalty=1.1,
+                        pad_token_id=self.tokenizer.eos_token_id,
+                        eos_token_id=self.tokenizer.eos_token_id,
+                    )
+
+                retry_tokens = outputs_retry[0][input_length:]
+                retry_text = self.tokenizer.decode(retry_tokens, skip_special_tokens=True)
+                retry_text_with_special = self.tokenizer.decode(retry_tokens, skip_special_tokens=False)
+                print(f"   📝 Retry output tokens: {len(retry_tokens)}")
+
+                if retry_text.strip():
+                    generated_text = retry_text
+                    print("   ✅ Retry generation produced non-empty text")
+                else:
+                    print(f"   ⚠️  Retry raw (with special tokens) preview: {retry_text_with_special[:300]}")
             
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
             print(f"📝 RAW MEDGEMMA 1.5 OUTPUT:")
             print(f"{'='*60}")
-            print(generated_text[:2000] if generated_text else "[EMPTY]")
+            final_text = generated_text.strip()
+            print(final_text[:2000] if final_text else "[EMPTY]")
             print(f"{'='*60}")
-            print(f"📝 Parsing MedGemma output ({len(generated_text)} chars)...\n")
+            print(f"📝 Parsing MedGemma output ({len(final_text)} chars)...\n")
             
             # Parse output into structured format
-            return self._parse_output_to_structure(generated_text, interaction_data)
+            return self._parse_output_to_structure(final_text, interaction_data)
             
         except Exception as e:
             print(f"❌ Generation failed: {e}")
