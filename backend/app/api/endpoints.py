@@ -21,10 +21,10 @@ print("="*70)
 preload_ocr()
 
 real_inference = RealMedGemmaInference()
-print("📦 Attempting to load TxGemma model...")
-print("   🏥 Model: google/txgemma-2b-predict (Health AI collection)")
-# Load TxGemma 2B Predict - text-to-text model for this backend flow
-model_loaded = real_inference.load_model("google/txgemma-2b-predict")
+print("📦 Attempting to load TxGemma 9B Chat model...")
+print("   🏥 Model: google/txgemma-9b-chat (Health AI collection)")
+# Load TxGemma 9B Chat - conversational model for drug-interaction explanations
+model_loaded = real_inference.load_model("google/txgemma-9b-chat")
 
 if not model_loaded:
     print("⚠️  WARNING: Failed to load TxGemma, falling back to MOCK inference")

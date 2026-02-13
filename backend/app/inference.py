@@ -140,22 +140,26 @@ class AIInference:
 # Real TxGemma Integration (for Kaggle with GPU)
 class RealMedGemmaInference:
     """
-    TxGemma 2B Predict model integration using text-generation pipeline.
+    TxGemma 9B Chat model integration using text-generation pipeline.
     
-    Model: google/txgemma-2b-predict
-    - Text-to-text for healthcare prediction/explanation tasks
-    - Optimized for Tesla T4 GPU
+    Model: google/txgemma-9b-chat
+    - Chat-based conversational model for therapeutic / drug-interaction tasks
+    - Uses Gemma 2 chat template (messages format)
+    - Runs on Kaggle Tesla T4 x2 via device_map="auto"
+    
+    Reference: https://huggingface.co/google/txgemma-9b-chat
     """
     
     def __init__(self):
         self.pipe = None
         self.device = None
         self._is_warmed_up = False
-        self.model_name = "google/txgemma-2b-predict"
+        self.model_name = "google/txgemma-9b-chat"
     
     def load_model(self, model_name: str = None, hf_token: str = None):
         """
-        Load TxGemma using text-generation pipeline.
+        Load TxGemma 9B Chat using text-generation pipeline.
+        Uses chat template – pass messages list, extract last assistant content.
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
@@ -198,7 +202,7 @@ class RealMedGemmaInference:
                 gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1024**3
                 print(f"   🎮 GPU: {gpu_name} ({gpu_mem:.1f} GB)")
             
-            print(f"   📦 Loading TxGemma: {self.model_name}")
+            print(f"   📦 Loading TxGemma Chat: {self.model_name}")
             print(f"   ⏳ Downloading model - please wait...")
 
             self.pipe = pipeline(
@@ -210,7 +214,7 @@ class RealMedGemmaInference:
                 trust_remote_code=True,
             )
             
-            print(f"   ✅ TxGemma loaded successfully!")
+            print(f"   ✅ TxGemma 9B Chat loaded successfully!")
             print(f"   💾 Model: {self.model_name}")
             print(f"   🎮 Device: {self.device}")
             
@@ -227,84 +231,95 @@ class RealMedGemmaInference:
             return False
     
     def warmup(self):
-        """Warm up the model with a simple query."""
+        """Warm up the model with a simple chat query."""
         if self.pipe is None or self._is_warmed_up:
             return
-            
-        print("   🔥 Warming up model...")
+
+        print("   🔥 Warming up TxGemma Chat...")
         try:
-            _ = self.pipe(
-                "Summarize: warfarin and aspirin interaction risk in one line.",
-                max_new_tokens=24,
-                do_sample=False,
-                return_full_text=False,
-            )
+            messages = [{"role": "user", "content": "What is aspirin used for? Answer in one line."}]
+            outputs = self.pipe(messages, max_new_tokens=32)
+            warmup_text = outputs[0]["generated_text"][-1]["content"].strip()
+            print(f"   ✅ Warmup complete – sample response: {warmup_text[:80]}")
             self._is_warmed_up = True
-            print("   ✅ Model warmup complete!")
         except Exception as e:
             print(f"   ⚠️  Warmup failed: {e}")
+            import traceback
+            traceback.print_exc()
     
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
         """
-        Generate drug interaction explanation using TxGemma.
+        Generate drug interaction explanation using TxGemma 9B Chat.
+        Uses chat messages format as per HuggingFace model card.
         """
         if self.pipe is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
-        
+
         import time
-        
+
         start_time = time.time()
-        
+
         try:
-            print(f"   🧠 Generating explanation with TxGemma...")
+            print(f"   🧠 Generating explanation with TxGemma 9B Chat...")
             print(f"   📝 Input prompt: {len(prompt)} chars")
 
+            # ---- Chat messages format (per model card) ----
+            messages = [{"role": "user", "content": prompt}]
+
             outputs = self.pipe(
-                prompt,
-                max_new_tokens=320,
+                messages,
+                max_new_tokens=512,
                 do_sample=False,
-                return_full_text=False,
             )
 
+            # Extract assistant reply from chat-style output
             generated_text = ""
-            if isinstance(outputs, list) and len(outputs) > 0:
-                first = outputs[0]
-                if isinstance(first, dict):
-                    if "generated_text" in first and isinstance(first["generated_text"], str):
-                        generated_text = first["generated_text"].strip()
-                    elif "text" in first and isinstance(first["text"], str):
-                        generated_text = first["text"].strip()
-            
+            try:
+                gen_list = outputs[0]["generated_text"]  # list of msg dicts
+                if isinstance(gen_list, list):
+                    # Last message is the model's response
+                    generated_text = gen_list[-1]["content"].strip()
+                elif isinstance(gen_list, str):
+                    # Fallback: plain string
+                    generated_text = gen_list.strip()
+            except (KeyError, IndexError, TypeError) as ex:
+                print(f"   ⚠️  Output extraction issue: {ex}")
+                print(f"   📝 Raw output object: {str(outputs)[:600]}")
+
             inference_time = time.time() - start_time
-            print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
+            print(f"   ⚡ TxGemma inference: {inference_time:.1f}s")
 
+            # Retry with a simpler prompt if empty
             if not generated_text:
-                print("   ⚠️  Extraction empty; inspecting raw output object")
-                print(f"   📝 Raw output object preview: {str(outputs)[:500]}")
+                print("   ⚠️  First attempt empty – retrying with simplified prompt...")
+                retry_msgs = [{"role": "user", "content": (
+                    f"Explain the drug interaction between "
+                    f"{interaction_data.get('drug_pair', ['Drug A','Drug B'])[0]} and "
+                    f"{interaction_data.get('drug_pair', ['Drug A','Drug B'])[1]}. "
+                    f"Cover: mechanism, symptoms, risk factors, monitoring, alternatives."
+                )}]
+                outputs_retry = self.pipe(retry_msgs, max_new_tokens=512, do_sample=False)
+                try:
+                    gen_list_r = outputs_retry[0]["generated_text"]
+                    if isinstance(gen_list_r, list):
+                        generated_text = gen_list_r[-1]["content"].strip()
+                    elif isinstance(gen_list_r, str):
+                        generated_text = gen_list_r.strip()
+                except Exception:
+                    pass
 
-                outputs_retry = self.pipe(
-                    f"{prompt}\n\nRespond with concise bullet points under: MECHANISM, SYMPTOMS, RISK FACTORS, MONITORING, ALTERNATIVES.",
-                    max_new_tokens=256,
-                    do_sample=False,
-                    return_full_text=False,
-                )
-                if isinstance(outputs_retry, list) and len(outputs_retry) > 0 and isinstance(outputs_retry[0], dict):
-                    retry_gt = outputs_retry[0].get("generated_text", "")
-                    if isinstance(retry_gt, str):
-                        generated_text = retry_gt.strip()
-            
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
-            print(f"📝 RAW TXGEMMA OUTPUT:")
+            print(f"📝 RAW TXGEMMA 9B CHAT OUTPUT:")
             print(f"{'='*60}")
             final_text = generated_text.strip()
             print(final_text[:2000] if final_text else "[EMPTY]")
             print(f"{'='*60}")
-            print(f"📝 Parsing MedGemma output ({len(final_text)} chars)...\n")
-            
+            print(f"📝 Output length: {len(final_text)} chars\n")
+
             # Parse output into structured format
             return self._parse_output_to_structure(final_text, interaction_data)
-            
+
         except Exception as e:
             print(f"❌ Generation failed: {e}")
             import traceback
