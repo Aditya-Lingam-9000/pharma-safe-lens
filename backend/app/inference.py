@@ -137,47 +137,47 @@ class AIInference:
         return f"[MOCK TRANSLATION to {target_lang}]: {text[:50]}..."
 
 
-# Real MedGemma Integration (for Kaggle with GPU - OPTIMIZED for Tesla T4)
+# Real MedGemma 1.5 Integration (for Kaggle with GPU)
 class RealMedGemmaInference:
     """
-    Real MedGemma model integration for Kaggle GPU deployment.
-    OPTIMIZED for maximum GPU utilization on Tesla T4 x2.
+    MedGemma 1.5 4B model integration using transformers pipeline.
     
-    Optimizations:
-    - Float16 precision (optimal for T4 architecture)
-    - Flash Attention 2 when available
-    - torch.compile() for kernel optimization
-    - Reduced generation length for speed
-    - Model warmup at startup
-    - CUDA memory optimization
+    Model: google/medgemma-1.5-4b-it
+    - Multimodal: Can process images AND text
+    - Instruction-tuned for medical tasks
+    - Optimized for Tesla T4 GPU
+    
+    Reference: https://huggingface.co/collections/google/medgemma-release
     """
     
     def __init__(self):
-        self.model = None
-        self.tokenizer = None
+        self.pipe = None
         self.device = None
         self._is_warmed_up = False
+        self.model_name = "google/medgemma-1.5-4b-it"
     
-    def load_model(self, model_name: str = "google/medgemma-4b-it", hf_token: str = None):
+    def load_model(self, model_name: str = None, hf_token: str = None):
         """
-        Load MedGemma model with MAXIMUM GPU optimization for Tesla T4.
+        Load MedGemma 1.5 using the pipeline API.
+        Much simpler and more reliable than manual loading.
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
             import torch
             import os
-            from transformers import AutoTokenizer, AutoModelForCausalLM, BitsAndBytesConfig
+            from transformers import pipeline
+            
+            # Use provided model name or default to MedGemma 1.5
+            if model_name:
+                self.model_name = model_name
             
             # ===== CUDA OPTIMIZATIONS FOR T4 =====
             if torch.cuda.is_available():
-                # Enable TensorFloat-32 for faster matrix multiplication
                 torch.backends.cuda.matmul.allow_tf32 = True
                 torch.backends.cudnn.allow_tf32 = True
-                # Enable cuDNN autotuner for best convolution algorithm
                 torch.backends.cudnn.benchmark = True
-                # Set memory allocation strategy
                 torch.cuda.empty_cache()
-                print(f"   ⚡ CUDA optimizations enabled (TF32, cuDNN benchmark)")
+                print(f"   ⚡ CUDA optimizations enabled")
             
             # Get HuggingFace token
             token = hf_token
@@ -203,105 +203,41 @@ class RealMedGemmaInference:
             if self.device == "cuda":
                 gpu_name = torch.cuda.get_device_name(0)
                 gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1024**3
-                print(f"   🎮 GPU: {gpu_name} ({gpu_mem:.1f} GB)")
-                
-                # Check for multiple GPUs
                 num_gpus = torch.cuda.device_count()
+                print(f"   🎮 GPU: {gpu_name} ({gpu_mem:.1f} GB)")
                 if num_gpus > 1:
-                    print(f"   🎮 Multi-GPU detected: {num_gpus} GPUs available")
+                    print(f"   🎮 Multi-GPU: {num_gpus} GPUs available")
             else:
-                print(f"   ⚠️  WARNING: No GPU! Enable GPU T4 x2 in Kaggle settings")
-                return False
+                print(f"   ⚠️  WARNING: No GPU! This will be slow.")
             
-            print(f"   📦 Loading MedGemma: {model_name}")
-            print(f"   ⏳ Downloading model (~8GB) - please wait...")
+            print(f"   📦 Loading MedGemma 1.5: {self.model_name}")
+            print(f"   ⏳ Downloading model - please wait...")
             
-            # Load tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                model_name,
+            # ===== LOAD MODEL USING PIPELINE =====
+            # This is the recommended approach for MedGemma 1.5
+            self.pipe = pipeline(
+                "text-generation",
+                model=self.model_name,
                 token=token,
+                torch_dtype=torch.float16,
+                device_map="auto",
                 trust_remote_code=True,
-                padding_side="left"
             )
             
-            # Set pad token if not set
-            if self.tokenizer.pad_token is None:
-                self.tokenizer.pad_token = self.tokenizer.eos_token
-            
-            print(f"   ✅ Tokenizer loaded")
-            
-            # ===== OPTIMIZED MODEL LOADING FOR T4 =====
-            # T4 is optimized for float16 (not bfloat16)
-            # Use device_map="auto" for automatic multi-GPU distribution
-            
-            model_kwargs = {
-                "token": token,
-                "torch_dtype": torch.float16,  # T4 optimal dtype
-                "device_map": "auto",  # Distribute across available GPUs
-                "trust_remote_code": True,
-                "low_cpu_mem_usage": True,
-            }
-            
-            # Check if Flash Attention 2 is actually available
-            flash_attn_available = False
-            try:
-                import flash_attn
-                flash_attn_available = True
-                print(f"   ⚡ Flash Attention 2 available")
-            except ImportError:
-                print(f"   ℹ️  Flash Attention 2 not installed, using standard attention")
-            
-            # Try loading with Flash Attention, fall back to standard if it fails
-            model_loaded = False
-            
-            if flash_attn_available:
-                try:
-                    model_kwargs["attn_implementation"] = "flash_attention_2"
-                    self.model = AutoModelForCausalLM.from_pretrained(
-                        model_name,
-                        **model_kwargs
-                    )
-                    print(f"   ⚡ Model loaded with Flash Attention 2")
-                    model_loaded = True
-                except Exception as e:
-                    print(f"   ⚠️  Flash Attention failed: {e}")
-                    print(f"   ℹ️  Falling back to standard attention...")
-                    model_kwargs.pop("attn_implementation", None)
-            
-            # Fallback: load without Flash Attention
-            if not model_loaded:
-                self.model = AutoModelForCausalLM.from_pretrained(
-                    model_name,
-                    **model_kwargs
-                )
-                print(f"   ✅ Model loaded with standard attention")
-            
-            # ===== MODEL OPTIMIZATION =====
-            # Put model in evaluation mode
-            self.model.eval()
-            
-            # Try torch.compile for additional speedup (PyTorch 2.0+)
-            try:
-                self.model = torch.compile(self.model, mode="reduce-overhead")
-                print(f"   ⚡ torch.compile() enabled (kernel optimization)")
-            except Exception as e:
-                print(f"   ℹ️  torch.compile not available: {e}")
-            
-            print(f"   ✅ Model loaded successfully!")
-            print(f"   💾 Precision: float16 (T4 optimized)")
+            print(f"   ✅ MedGemma 1.5 loaded successfully!")
+            print(f"   💾 Model: {self.model_name}")
             print(f"   🎮 Device: {self.device}")
             
             # Show GPU memory usage
             if self.device == "cuda":
                 allocated = torch.cuda.memory_allocated() / 1024**3
-                reserved = torch.cuda.memory_reserved() / 1024**3
-                print(f"   📊 GPU Memory: {allocated:.1f}GB allocated, {reserved:.1f}GB reserved")
+                print(f"   📊 GPU Memory: {allocated:.1f}GB allocated")
             
             return True
             
         except ImportError as e:
             print(f"   ❌ ImportError: {e}")
-            print(f"   💡 pip install torch transformers accelerate flash-attn")
+            print(f"   💡 pip install torch transformers accelerate")
             return False
         except Exception as e:
             print(f"   ❌ Failed to load model: {e}")
@@ -310,99 +246,56 @@ class RealMedGemmaInference:
             return False
     
     def warmup(self):
-        """
-        Warm up the model with a dummy inference.
-        This pre-compiles CUDA kernels for faster subsequent inferences.
-        """
-        if self.model is None or self._is_warmed_up:
+        """Warm up the model with a simple query."""
+        if self.pipe is None or self._is_warmed_up:
             return
             
-        print("   🔥 Warming up model (compiling CUDA kernels)...")
-        import torch
-        
+        print("   🔥 Warming up model...")
         try:
-            dummy_prompt = "What is aspirin?"
-            inputs = self.tokenizer(dummy_prompt, return_tensors="pt").to(self.device)
-            
-            with torch.inference_mode():
-                _ = self.model.generate(
-                    **inputs,
-                    max_new_tokens=10,
-                    do_sample=False,
-                    pad_token_id=self.tokenizer.pad_token_id
-                )
-            
-            # Clear CUDA cache after warmup
-            if self.device == "cuda":
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
-            
+            # Simple warmup query
+            _ = self.pipe(
+                "What is aspirin?",
+                max_new_tokens=20,
+                do_sample=False
+            )
             self._is_warmed_up = True
-            print("   ✅ Model warmup complete - ready for fast inference!")
+            print("   ✅ Model warmup complete!")
         except Exception as e:
             print(f"   ⚠️  Warmup failed (non-critical): {e}")
     
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
         """
-        Generate explanation using MedGemma with OPTIMIZED inference.
-        Target: < 15 seconds on T4 GPU.
+        Generate drug interaction explanation using MedGemma 1.5.
         """
-        if self.model is None:
+        if self.pipe is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
         
-        import torch
         import time
         
         start_time = time.time()
         
         try:
-            # Tokenize with optimizations
-            inputs = self.tokenizer(
-                prompt, 
-                return_tensors="pt",
-                padding=True,
-                truncation=True,
-                max_length=1024  # Limit input length
-            ).to(self.device)
+            print(f"   🧠 Generating explanation with MedGemma 1.5...")
             
-            input_length = inputs["input_ids"].shape[1]
-            
-            # ===== OPTIMIZED GENERATION =====
-            # Use inference_mode (faster than no_grad)
-            with torch.inference_mode():
-                # Synchronize before generation for accurate timing
-                if self.device == "cuda":
-                    torch.cuda.synchronize()
-                
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=512,  # Reduced for speed (was 2048)
-                    min_new_tokens=100,  # Ensure meaningful response
-                    do_sample=False,  # Greedy decoding (fastest)
-                    num_beams=1,  # No beam search (fastest)
-                    use_cache=True,  # Enable KV cache
-                    pad_token_id=self.tokenizer.pad_token_id,
-                    eos_token_id=self.tokenizer.eos_token_id,
-                )
-                
-                # Synchronize after generation
-                if self.device == "cuda":
-                    torch.cuda.synchronize()
-            
-            # Decode only the new tokens
-            generated_text = self.tokenizer.decode(
-                outputs[0][input_length:], 
-                skip_special_tokens=True
+            # Generate using pipeline
+            outputs = self.pipe(
+                prompt,
+                max_new_tokens=600,
+                do_sample=False,  # Greedy decoding for speed
+                return_full_text=False,  # Only return generated text
             )
             
-            inference_time = time.time() - start_time
-            print(f"   ⚡ MedGemma inference: {inference_time:.1f}s ({len(outputs[0]) - input_length} tokens)")
+            # Extract generated text
+            generated_text = outputs[0]["generated_text"]
             
-            # DEBUG: Print raw output to see what MedGemma generates
+            inference_time = time.time() - start_time
+            print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
+            
+            # DEBUG: Show raw output
             print(f"\n{'='*60}")
-            print(f"📝 RAW MEDGEMMA OUTPUT:")
+            print(f"📝 RAW MEDGEMMA 1.5 OUTPUT:")
             print(f"{'='*60}")
-            print(generated_text[:2000])  # First 2000 chars
+            print(generated_text[:1500])
             print(f"{'='*60}\n")
             
             # Parse output into structured format
@@ -412,7 +305,7 @@ class RealMedGemmaInference:
             print(f"❌ Generation failed: {e}")
             import traceback
             traceback.print_exc()
-            # Fallback to mock if real generation fails
+            # Fallback to mock if generation fails
             return AIInference.generate_explanation(interaction_data)
     
     def _parse_output_to_structure(self, text: str, interaction_data: Dict) -> Dict:

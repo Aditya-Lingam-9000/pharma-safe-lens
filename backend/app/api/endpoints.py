@@ -21,11 +21,11 @@ print("="*70)
 preload_ocr()
 
 real_inference = RealMedGemmaInference()
-print("📦 Attempting to load MedGemma model...")
-print("   🏥 Model: google/medgemma-4b-it (Health AI collection)")
+print("📦 Attempting to load MedGemma 1.5 model...")
+print("   🏥 Model: google/medgemma-1.5-4b-it (Latest MedGemma release)")
 print("   🔐 This is a gated model - requires HuggingFace authentication")
-# Load MedGemma 4B from Google Health AI collection (gated model)
-model_loaded = real_inference.load_model("google/medgemma-4b-it")
+# Load MedGemma 1.5 4B - the latest and best model for medical tasks
+model_loaded = real_inference.load_model("google/medgemma-1.5-4b-it")
 
 if not model_loaded:
     print("⚠️  WARNING: Failed to load MedGemma, falling back to MOCK inference")
