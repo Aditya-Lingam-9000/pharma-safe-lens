@@ -150,21 +150,20 @@ class RealMedGemmaInference:
     """
     
     def __init__(self):
-        self.model = None
-        self.tokenizer = None
+        self.pipe = None
         self.device = None
         self._is_warmed_up = False
         self.model_name = "google/medgemma-1.5-4b-it"
     
     def load_model(self, model_name: str = None, hf_token: str = None):
         """
-        Load MedGemma 1.5 model and tokenizer directly for full control.
+        Load MedGemma 1.5 using the model's native image-text-to-text pipeline.
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
             import torch
             import os
-            from transformers import AutoModelForCausalLM, AutoTokenizer
+            from transformers import pipeline
             
             if model_name:
                 self.model_name = model_name
@@ -204,18 +203,10 @@ class RealMedGemmaInference:
             
             print(f"   📦 Loading MedGemma 1.5: {self.model_name}")
             print(f"   ⏳ Downloading model - please wait...")
-            
-            # Load tokenizer
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                self.model_name,
-                token=token,
-                trust_remote_code=True,
-            )
-            print(f"   ✅ Tokenizer loaded")
-            
-            # Load model
-            self.model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
+
+            self.pipe = pipeline(
+                "image-text-to-text",
+                model=self.model_name,
                 token=token,
                 torch_dtype=torch.float16,
                 device_map="auto",
@@ -240,15 +231,20 @@ class RealMedGemmaInference:
     
     def warmup(self):
         """Warm up the model with a simple query."""
-        if self.model is None or self._is_warmed_up:
+        if self.pipe is None or self._is_warmed_up:
             return
             
         print("   🔥 Warming up model...")
         try:
-            import torch
-            test_input = self.tokenizer("Hello", return_tensors="pt").to(self.device)
-            with torch.no_grad():
-                _ = self.model.generate(**test_input, max_new_tokens=5)
+            warmup_messages = [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": "Say: warmup ok"}
+                    ],
+                }
+            ]
+            _ = self.pipe(text=warmup_messages, max_new_tokens=12, do_sample=False)
             self._is_warmed_up = True
             print("   ✅ Model warmup complete!")
         except Exception as e:
@@ -257,122 +253,86 @@ class RealMedGemmaInference:
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
         """
         Generate drug interaction explanation using MedGemma 1.5.
-        Uses direct model.generate() for full control over generation.
+        Uses native MedGemma 1.5 messages API.
         """
-        if self.model is None or self.tokenizer is None:
+        if self.pipe is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
         
         import time
-        import torch
         
         start_time = time.time()
         
         try:
             print(f"   🧠 Generating explanation with MedGemma 1.5...")
             print(f"   📝 Input prompt: {len(prompt)} chars")
-            
-            # ===== FORMAT AS CHAT MESSAGE =====
+
             messages = [
-                {"role": "user", "content": prompt}
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt}
+                    ],
+                }
             ]
-            
-            # Apply chat template
-            formatted_input = self.tokenizer.apply_chat_template(
-                messages,
-                tokenize=False,
-                add_generation_prompt=True
+
+            outputs = self.pipe(
+                text=messages,
+                max_new_tokens=320,
+                do_sample=False,
             )
-            print(f"   📝 Formatted input: {len(formatted_input)} chars")
-            print(f"   📝 First 200 chars: {formatted_input[:200]}...")
-            print(f"   🧩 Tokenizer ids => pad:{self.tokenizer.pad_token_id} eos:{self.tokenizer.eos_token_id} bos:{self.tokenizer.bos_token_id}")
-            
-            # Tokenize
-            inputs = self.tokenizer(
-                formatted_input,
-                return_tensors="pt",
-                truncation=True,
-                max_length=1024,
-                add_special_tokens=False,
-            ).to(self.model.device)
-            
-            input_length = inputs['input_ids'].shape[1]
-            print(f"   📝 Input tokens: {input_length}")
-            
-            # Generate with explicit parameters
-            with torch.inference_mode():
-                outputs = self.model.generate(
-                    **inputs,
-                    max_new_tokens=384,
-                    min_new_tokens=64,
-                    do_sample=False,
-                    repetition_penalty=1.05,
-                    use_cache=True,
-                )
-            
-            # Extract ONLY the generated tokens (not the input)
-            generated_tokens = outputs[0][input_length:]
-            generated_ids = generated_tokens.tolist()
-            generated_text = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
-            generated_text_with_special = self.tokenizer.decode(generated_tokens, skip_special_tokens=False)
+
+            generated_text = ""
+            if isinstance(outputs, list) and len(outputs) > 0:
+                first = outputs[0]
+                if isinstance(first, dict):
+                    # Common shape for chat pipelines
+                    if "generated_text" in first:
+                        gt = first["generated_text"]
+                        if isinstance(gt, list) and len(gt) > 0:
+                            last_msg = gt[-1]
+                            if isinstance(last_msg, dict):
+                                content = last_msg.get("content", "")
+                                if isinstance(content, list):
+                                    parts = []
+                                    for part in content:
+                                        if isinstance(part, dict) and part.get("type") == "text":
+                                            parts.append(part.get("text", ""))
+                                    generated_text = "\n".join([p for p in parts if p]).strip()
+                                elif isinstance(content, str):
+                                    generated_text = content.strip()
+                        elif isinstance(gt, str):
+                            generated_text = gt.strip()
+                    elif "text" in first and isinstance(first["text"], str):
+                        generated_text = first["text"].strip()
             
             inference_time = time.time() - start_time
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
-            print(f"   📝 Output tokens: {len(generated_tokens)}")
-            print(f"   📝 First 20 token IDs: {generated_ids[:20]}")
 
-            # If decoded text is empty, model may be emitting only special control tokens.
-            # Try sanitizing first, then fallback to deterministic plain-text prompting.
-            if not generated_text.strip():
-                print("   ⚠️  Decoded text empty after removing special tokens")
-                print(f"   📝 Raw (with special tokens) preview: {generated_text_with_special[:300]}")
+            if not generated_text:
+                print("   ⚠️  Native extraction empty; inspecting raw output object")
+                print(f"   📝 Raw output object preview: {str(outputs)[:500]}")
 
-                sanitized = generated_text_with_special
-                for token_marker in [
-                    "<bos>", "<eos>", "<pad>",
-                    "<start_of_turn>", "<end_of_turn>",
-                    "<|begin_of_text|>", "<|end_of_text|>",
-                ]:
-                    sanitized = sanitized.replace(token_marker, " ")
-                generated_text = " ".join(sanitized.split())
-
-            if not generated_text.strip():
-                print("   ⚠️  Still empty. Retrying with deterministic plain-text input...")
-                plain_prompt = (
-                    f"{prompt}\n\n"
-                    "Respond with exactly these 5 numbered sections and bullet points:\n"
-                    "1. MECHANISM\n2. SYMPTOMS\n3. RISK FACTORS\n4. MONITORING\n5. ALTERNATIVES"
-                )
-
-                plain_inputs = self.tokenizer(
-                    plain_prompt,
-                    return_tensors="pt",
-                    truncation=True,
-                    max_length=1024,
-                ).to(self.model.device)
-
-                plain_input_length = plain_inputs['input_ids'].shape[1]
-                with torch.inference_mode():
-                    outputs_retry = self.model.generate(
-                        **plain_inputs,
-                        max_new_tokens=320,
-                        min_new_tokens=64,
-                        do_sample=False,
-                        repetition_penalty=1.05,
-                        use_cache=True,
-                    )
-
-                retry_tokens = outputs_retry[0][plain_input_length:]
-                retry_ids = retry_tokens.tolist()
-                retry_text = self.tokenizer.decode(retry_tokens, skip_special_tokens=True)
-                retry_text_with_special = self.tokenizer.decode(retry_tokens, skip_special_tokens=False)
-                print(f"   📝 Retry output tokens: {len(retry_tokens)}")
-                print(f"   📝 Retry first 20 token IDs: {retry_ids[:20]}")
-
-                if retry_text.strip():
-                    generated_text = retry_text
-                    print("   ✅ Retry generation produced non-empty text")
-                else:
-                    print(f"   ⚠️  Retry raw (with special tokens) preview: {retry_text_with_special[:300]}")
+                # Last fallback: plain text-generation call through the same pipe API if supported
+                fallback_messages = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": f"{prompt}\n\nWrite clear, practical bullet points under these headers: MECHANISM, SYMPTOMS, RISK FACTORS, MONITORING, ALTERNATIVES."
+                            }
+                        ],
+                    }
+                ]
+                outputs_retry = self.pipe(text=fallback_messages, max_new_tokens=256, do_sample=False)
+                if isinstance(outputs_retry, list) and len(outputs_retry) > 0 and isinstance(outputs_retry[0], dict):
+                    retry_gt = outputs_retry[0].get("generated_text", "")
+                    if isinstance(retry_gt, str):
+                        generated_text = retry_gt.strip()
+                    elif isinstance(retry_gt, list) and len(retry_gt) > 0 and isinstance(retry_gt[-1], dict):
+                        retry_content = retry_gt[-1].get("content", "")
+                        if isinstance(retry_content, str):
+                            generated_text = retry_content.strip()
             
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
