@@ -277,26 +277,68 @@ class RealMedGemmaInference:
         try:
             print(f"   🧠 Generating explanation with MedGemma 1.5...")
             
+            # DEBUG: Show prompt length
+            print(f"   📝 Prompt length: {len(prompt)} chars")
+            
             # Generate using pipeline
+            # Use return_full_text=True and extract the new part manually
             outputs = self.pipe(
                 prompt,
                 max_new_tokens=600,
                 do_sample=False,  # Greedy decoding for speed
-                return_full_text=False,  # Only return generated text
+                return_full_text=True,  # Get full text including prompt
+                pad_token_id=self.pipe.tokenizer.eos_token_id,  # Avoid warning
             )
-            
-            # Extract generated text
-            generated_text = outputs[0]["generated_text"]
             
             inference_time = time.time() - start_time
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
+            
+            # DEBUG: Show output structure
+            print(f"   📦 Output type: {type(outputs)}")
+            print(f"   📦 Output length: {len(outputs)}")
+            
+            # Handle different output formats
+            generated_text = ""
+            
+            if isinstance(outputs, list) and len(outputs) > 0:
+                first_output = outputs[0]
+                print(f"   📦 First output type: {type(first_output)}")
+                print(f"   📦 First output keys: {first_output.keys() if isinstance(first_output, dict) else 'N/A'}")
+                
+                if isinstance(first_output, dict):
+                    if "generated_text" in first_output:
+                        full_text = first_output["generated_text"]
+                        # Extract only the generated part (after the prompt)
+                        if full_text.startswith(prompt):
+                            generated_text = full_text[len(prompt):].strip()
+                        else:
+                            # Try to find where the response starts
+                            # Look for common response markers
+                            markers = ["**MECHANISM", "## MECHANISM", "1.", "MECHANISM:", "The interaction"]
+                            for marker in markers:
+                                if marker in full_text:
+                                    idx = full_text.find(marker)
+                                    generated_text = full_text[idx:].strip()
+                                    break
+                            else:
+                                generated_text = full_text.strip()
+                    elif "text" in first_output:
+                        generated_text = first_output["text"]
+            elif isinstance(outputs, str):
+                generated_text = outputs
             
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
             print(f"📝 RAW MEDGEMMA 1.5 OUTPUT:")
             print(f"{'='*60}")
-            print(generated_text[:1500])
-            print(f"{'='*60}\n")
+            print(generated_text[:2000] if len(generated_text) > 0 else "[EMPTY OUTPUT]")
+            print(f"{'='*60}")
+            print(f"📝 Parsing MedGemma output ({len(generated_text)} chars)...\n")
+            
+            # If still empty, log the full output for debugging
+            if len(generated_text) == 0:
+                print(f"⚠️  Empty generated text! Full outputs object:")
+                print(f"{outputs}")
             
             # Parse output into structured format
             return self._parse_output_to_structure(generated_text, interaction_data)
