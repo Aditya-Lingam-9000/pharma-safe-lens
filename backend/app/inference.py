@@ -266,6 +266,8 @@ class RealMedGemmaInference:
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
         """
         Generate drug interaction explanation using MedGemma 1.5.
+        
+        MedGemma 1.5 is instruction-tuned and requires CHAT MESSAGE FORMAT.
         """
         if self.pipe is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -276,56 +278,50 @@ class RealMedGemmaInference:
         
         try:
             print(f"   🧠 Generating explanation with MedGemma 1.5...")
-            
-            # DEBUG: Show prompt length
             print(f"   📝 Prompt length: {len(prompt)} chars")
             
-            # Generate using pipeline
-            # Use return_full_text=True and extract the new part manually
+            # ===== CRITICAL: Use Chat Message Format for MedGemma 1.5 =====
+            # MedGemma 1.5 is instruction-tuned and expects messages format
+            messages = [
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ]
+            
+            # Apply chat template to format the messages properly
+            tokenizer = self.pipe.tokenizer
+            formatted_prompt = tokenizer.apply_chat_template(
+                messages, 
+                tokenize=False, 
+                add_generation_prompt=True
+            )
+            
+            print(f"   📝 Formatted prompt length: {len(formatted_prompt)} chars")
+            
+            # Generate using the formatted prompt
             outputs = self.pipe(
-                prompt,
+                formatted_prompt,
                 max_new_tokens=600,
                 do_sample=False,  # Greedy decoding for speed
-                return_full_text=True,  # Get full text including prompt
-                pad_token_id=self.pipe.tokenizer.eos_token_id,  # Avoid warning
+                return_full_text=False,  # Only return generated part
+                pad_token_id=tokenizer.eos_token_id,
             )
             
             inference_time = time.time() - start_time
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
             
-            # DEBUG: Show output structure
-            print(f"   📦 Output type: {type(outputs)}")
-            print(f"   📦 Output length: {len(outputs)}")
-            
-            # Handle different output formats
+            # Extract generated text
             generated_text = ""
             
             if isinstance(outputs, list) and len(outputs) > 0:
                 first_output = outputs[0]
-                print(f"   📦 First output type: {type(first_output)}")
-                print(f"   📦 First output keys: {first_output.keys() if isinstance(first_output, dict) else 'N/A'}")
-                
-                if isinstance(first_output, dict):
-                    if "generated_text" in first_output:
-                        full_text = first_output["generated_text"]
-                        # Extract only the generated part (after the prompt)
-                        if full_text.startswith(prompt):
-                            generated_text = full_text[len(prompt):].strip()
-                        else:
-                            # Try to find where the response starts
-                            # Look for common response markers
-                            markers = ["**MECHANISM", "## MECHANISM", "1.", "MECHANISM:", "The interaction"]
-                            for marker in markers:
-                                if marker in full_text:
-                                    idx = full_text.find(marker)
-                                    generated_text = full_text[idx:].strip()
-                                    break
-                            else:
-                                generated_text = full_text.strip()
-                    elif "text" in first_output:
-                        generated_text = first_output["text"]
+                if isinstance(first_output, dict) and "generated_text" in first_output:
+                    generated_text = first_output["generated_text"].strip()
+                elif isinstance(first_output, str):
+                    generated_text = first_output.strip()
             elif isinstance(outputs, str):
-                generated_text = outputs
+                generated_text = outputs.strip()
             
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
@@ -335,10 +331,25 @@ class RealMedGemmaInference:
             print(f"{'='*60}")
             print(f"📝 Parsing MedGemma output ({len(generated_text)} chars)...\n")
             
-            # If still empty, log the full output for debugging
+            # If still empty, try alternative extraction
             if len(generated_text) == 0:
-                print(f"⚠️  Empty generated text! Full outputs object:")
-                print(f"{outputs}")
+                print(f"⚠️  Empty generated text! Trying alternative...")
+                # Try with return_full_text=True as fallback
+                outputs2 = self.pipe(
+                    formatted_prompt,
+                    max_new_tokens=600,
+                    do_sample=False,
+                    return_full_text=True,
+                    pad_token_id=tokenizer.eos_token_id,
+                )
+                if outputs2 and isinstance(outputs2[0], dict):
+                    full_text = outputs2[0].get("generated_text", "")
+                    # Remove the prompt part
+                    if formatted_prompt in full_text:
+                        generated_text = full_text.replace(formatted_prompt, "").strip()
+                    else:
+                        generated_text = full_text[len(formatted_prompt):].strip()
+                    print(f"   📝 Alternative extraction: {len(generated_text)} chars")
             
             # Parse output into structured format
             return self._parse_output_to_structure(generated_text, interaction_data)
