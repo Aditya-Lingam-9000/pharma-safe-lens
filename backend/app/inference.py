@@ -137,27 +137,25 @@ class AIInference:
         return f"[MOCK TRANSLATION to {target_lang}]: {text[:50]}..."
 
 
-# Real MedGemma 1.5 Integration (for Kaggle with GPU)
+# Real TxGemma Integration (for Kaggle with GPU)
 class RealMedGemmaInference:
     """
-    MedGemma 1.5 4B model integration using direct model.generate().
+    TxGemma 2B Predict model integration using text-generation pipeline.
     
-    Model: google/medgemma-1.5-4b-it
-    - Instruction-tuned for medical tasks
+    Model: google/txgemma-2b-predict
+    - Text-to-text for healthcare prediction/explanation tasks
     - Optimized for Tesla T4 GPU
-    
-    Reference: https://huggingface.co/collections/google/medgemma-release
     """
     
     def __init__(self):
         self.pipe = None
         self.device = None
         self._is_warmed_up = False
-        self.model_name = "google/medgemma-1.5-4b-it"
+        self.model_name = "google/txgemma-2b-predict"
     
     def load_model(self, model_name: str = None, hf_token: str = None):
         """
-        Load MedGemma 1.5 using the model's native image-text-to-text pipeline.
+        Load TxGemma using text-generation pipeline.
         """
         try:
             print(f"   📥 Importing PyTorch and Transformers...")
@@ -191,8 +189,7 @@ class RealMedGemmaInference:
                     pass
             
             if not token:
-                print(f"   ❌ ERROR: HuggingFace token not found!")
-                return False
+                print("   ℹ️  HF_TOKEN not found; trying public/auth-cached model access")
             
             self.device = "cuda" if torch.cuda.is_available() else "cpu"
             
@@ -201,19 +198,19 @@ class RealMedGemmaInference:
                 gpu_mem = torch.cuda.get_device_properties(0).total_memory / 1024**3
                 print(f"   🎮 GPU: {gpu_name} ({gpu_mem:.1f} GB)")
             
-            print(f"   📦 Loading MedGemma 1.5: {self.model_name}")
+            print(f"   📦 Loading TxGemma: {self.model_name}")
             print(f"   ⏳ Downloading model - please wait...")
 
             self.pipe = pipeline(
-                "image-text-to-text",
+                "text-generation",
                 model=self.model_name,
-                token=token,
+                token=token if token else None,
                 torch_dtype=torch.float16,
                 device_map="auto",
                 trust_remote_code=True,
             )
             
-            print(f"   ✅ MedGemma 1.5 loaded successfully!")
+            print(f"   ✅ TxGemma loaded successfully!")
             print(f"   💾 Model: {self.model_name}")
             print(f"   🎮 Device: {self.device}")
             
@@ -236,15 +233,12 @@ class RealMedGemmaInference:
             
         print("   🔥 Warming up model...")
         try:
-            warmup_messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": "Say: warmup ok"}
-                    ],
-                }
-            ]
-            _ = self.pipe(text=warmup_messages, max_new_tokens=12, do_sample=False)
+            _ = self.pipe(
+                "Summarize: warfarin and aspirin interaction risk in one line.",
+                max_new_tokens=24,
+                do_sample=False,
+                return_full_text=False,
+            )
             self._is_warmed_up = True
             print("   ✅ Model warmup complete!")
         except Exception as e:
@@ -252,8 +246,7 @@ class RealMedGemmaInference:
     
     def generate_explanation(self, interaction_data: Dict, prompt: str) -> Dict:
         """
-        Generate drug interaction explanation using MedGemma 1.5.
-        Uses native MedGemma 1.5 messages API.
+        Generate drug interaction explanation using TxGemma.
         """
         if self.pipe is None:
             raise RuntimeError("Model not loaded. Call load_model() first.")
@@ -263,45 +256,22 @@ class RealMedGemmaInference:
         start_time = time.time()
         
         try:
-            print(f"   🧠 Generating explanation with MedGemma 1.5...")
+            print(f"   🧠 Generating explanation with TxGemma...")
             print(f"   📝 Input prompt: {len(prompt)} chars")
 
-            messages = [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt}
-                    ],
-                }
-            ]
-
             outputs = self.pipe(
-                text=messages,
+                prompt,
                 max_new_tokens=320,
                 do_sample=False,
+                return_full_text=False,
             )
 
             generated_text = ""
             if isinstance(outputs, list) and len(outputs) > 0:
                 first = outputs[0]
                 if isinstance(first, dict):
-                    # Common shape for chat pipelines
-                    if "generated_text" in first:
-                        gt = first["generated_text"]
-                        if isinstance(gt, list) and len(gt) > 0:
-                            last_msg = gt[-1]
-                            if isinstance(last_msg, dict):
-                                content = last_msg.get("content", "")
-                                if isinstance(content, list):
-                                    parts = []
-                                    for part in content:
-                                        if isinstance(part, dict) and part.get("type") == "text":
-                                            parts.append(part.get("text", ""))
-                                    generated_text = "\n".join([p for p in parts if p]).strip()
-                                elif isinstance(content, str):
-                                    generated_text = content.strip()
-                        elif isinstance(gt, str):
-                            generated_text = gt.strip()
+                    if "generated_text" in first and isinstance(first["generated_text"], str):
+                        generated_text = first["generated_text"].strip()
                     elif "text" in first and isinstance(first["text"], str):
                         generated_text = first["text"].strip()
             
@@ -309,34 +279,23 @@ class RealMedGemmaInference:
             print(f"   ⚡ MedGemma inference: {inference_time:.1f}s")
 
             if not generated_text:
-                print("   ⚠️  Native extraction empty; inspecting raw output object")
+                print("   ⚠️  Extraction empty; inspecting raw output object")
                 print(f"   📝 Raw output object preview: {str(outputs)[:500]}")
 
-                # Last fallback: plain text-generation call through the same pipe API if supported
-                fallback_messages = [
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": f"{prompt}\n\nWrite clear, practical bullet points under these headers: MECHANISM, SYMPTOMS, RISK FACTORS, MONITORING, ALTERNATIVES."
-                            }
-                        ],
-                    }
-                ]
-                outputs_retry = self.pipe(text=fallback_messages, max_new_tokens=256, do_sample=False)
+                outputs_retry = self.pipe(
+                    f"{prompt}\n\nRespond with concise bullet points under: MECHANISM, SYMPTOMS, RISK FACTORS, MONITORING, ALTERNATIVES.",
+                    max_new_tokens=256,
+                    do_sample=False,
+                    return_full_text=False,
+                )
                 if isinstance(outputs_retry, list) and len(outputs_retry) > 0 and isinstance(outputs_retry[0], dict):
                     retry_gt = outputs_retry[0].get("generated_text", "")
                     if isinstance(retry_gt, str):
                         generated_text = retry_gt.strip()
-                    elif isinstance(retry_gt, list) and len(retry_gt) > 0 and isinstance(retry_gt[-1], dict):
-                        retry_content = retry_gt[-1].get("content", "")
-                        if isinstance(retry_content, str):
-                            generated_text = retry_content.strip()
             
             # DEBUG: Show raw output
             print(f"\n{'='*60}")
-            print(f"📝 RAW MEDGEMMA 1.5 OUTPUT:")
+            print(f"📝 RAW TXGEMMA OUTPUT:")
             print(f"{'='*60}")
             final_text = generated_text.strip()
             print(final_text[:2000] if final_text else "[EMPTY]")

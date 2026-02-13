@@ -21,14 +21,13 @@ print("="*70)
 preload_ocr()
 
 real_inference = RealMedGemmaInference()
-print("📦 Attempting to load MedGemma 1.5 model...")
-print("   🏥 Model: google/medgemma-1.5-4b-it (Latest MedGemma release)")
-print("   🔐 This is a gated model - requires HuggingFace authentication")
-# Load MedGemma 1.5 4B - the latest and best model for medical tasks
-model_loaded = real_inference.load_model("google/medgemma-1.5-4b-it")
+print("📦 Attempting to load TxGemma model...")
+print("   🏥 Model: google/txgemma-2b-predict (Health AI collection)")
+# Load TxGemma 2B Predict - text-to-text model for this backend flow
+model_loaded = real_inference.load_model("google/txgemma-2b-predict")
 
 if not model_loaded:
-    print("⚠️  WARNING: Failed to load MedGemma, falling back to MOCK inference")
+    print("⚠️  WARNING: Failed to load TxGemma, falling back to MOCK inference")
     print("   Possible reasons:")
     print("   - Missing packages: torch, transformers")
     print("   - No GPU available")
@@ -39,7 +38,7 @@ if not model_loaded:
 else:
     # Warmup model for faster first inference
     real_inference.warmup()
-    print("✅ SUCCESS: MedGemma model loaded and warmed up!")
+    print("✅ SUCCESS: TxGemma model loaded and warmed up!")
     print("="*70)
 
 # Router initialization
