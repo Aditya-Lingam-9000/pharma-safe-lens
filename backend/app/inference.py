@@ -326,23 +326,37 @@ class RealMedGemmaInference:
             traceback.print_exc()
             return AIInference.generate_explanation(interaction_data)
     
+    @staticmethod
+    def _clean_markdown(text: str) -> str:
+        """Strip all markdown formatting so the frontend receives clean plain text."""
+        import re
+        # Remove bold markers:  **text** → text
+        text = re.sub(r'\*\*(.+?)\*\*', r'\1', text)
+        # Remove remaining stray ** pairs
+        text = text.replace('**', '')
+        # Remove italic markers:  *text* → text  (but not bullet "* ")
+        text = re.sub(r'(?<!\s)\*([^\*\s][^\*]*?)\*', r'\1', text)
+        # Remove heading markers  ## text → text
+        text = re.sub(r'^#{1,4}\s*', '', text, flags=re.MULTILINE)
+        # Collapse multiple spaces / tabs
+        text = re.sub(r'[ \t]{2,}', ' ', text)
+        return text.strip()
+
     def _parse_output_to_structure(self, text: str, interaction_data: Dict) -> Dict:
         """
-        Parse MedGemma's free-text output into structured format for frontend.
-        ROBUST parsing that handles various output formats.
+        Parse TxGemma 9B Chat markdown output into clean structured format
+        that the React frontend can render directly (no markdown symbols).
         """
         import re
-        
+
         drug_pair = interaction_data.get('drug_pair', ['Drug A', 'Drug B'])
         drug1 = drug_pair[0].title() if isinstance(drug_pair, (list, tuple)) else "Drug"
         drug2 = drug_pair[1].title() if isinstance(drug_pair, (list, tuple)) and len(drug_pair) > 1 else "Drug"
-        
-        print(f"   📝 Parsing MedGemma output ({len(text)} chars)...")
-        
-        # Clean the text
+
+        print(f"   📝 Parsing TxGemma output ({len(text)} chars)...")
+
         text = text.strip()
-        
-        # Initialize result
+
         result = {
             "mechanism_of_interaction": [],
             "clinical_manifestations": [],
@@ -350,124 +364,170 @@ class RealMedGemmaInference:
             "monitoring_recommendations": [],
             "alternative_suggestions": []
         }
-        
-        # Try to find numbered sections (1. MECHANISM, 2. SYMPTOMS, etc.)
-        section_patterns = [
-            # Pattern: "1. MECHANISM:" or "1. MECHANISM\n" or "**1. MECHANISM**"
-            (r'1\.?\s*(?:\*\*)?MECHANISM[:\s\*]*(.+?)(?=2\.?\s*(?:\*\*)?(?:SYMPTOMS|CLINICAL)|$)', 'mechanism_of_interaction'),
-            (r'2\.?\s*(?:\*\*)?(?:SYMPTOMS|CLINICAL)[:\s\*]*(.+?)(?=3\.?\s*(?:\*\*)?RISK|$)', 'clinical_manifestations'),
-            (r'3\.?\s*(?:\*\*)?RISK[:\s\*]*(.+?)(?=4\.?\s*(?:\*\*)?MONITOR|$)', 'risk_factors'),
-            (r'4\.?\s*(?:\*\*)?MONITOR[:\s\*]*(.+?)(?=5\.?\s*(?:\*\*)?ALTERNATIVE|$)', 'monitoring_recommendations'),
-            (r'5\.?\s*(?:\*\*)?ALTERNATIVE[:\s\*]*(.+?)(?=Consult|$)', 'alternative_suggestions'),
-        ]
-        
+
+        # ── Split by the numbered section headers TxGemma produces ──
+        # Handles formats like:
+        #   **1. MECHANISM:**  …
+        #   **2. SYMPTOMS:**   …
+        #   **3. RISK FACTORS:** …
+        #   **4. MONITORING:**   …
+        #   **5. ALTERNATIVES:** …
+        # The header itself may be wrapped in ** and may have varying spacing.
+        header_re = re.compile(
+            r'\*{0,2}\s*\d+\.\s*'                 # optional ** + "N. "
+            r'(MECHANISM|SYMPTOMS|CLINICAL|RISK\s*FACTORS?|'
+            r'MONITORING|MONITOR|ALTERNATIVES?)\s*'  # section keyword
+            r'[:.\*]*\s*\*{0,2}\s*',               # trailing **: or **
+            re.IGNORECASE
+        )
+
+        # Find all header positions
+        headers = list(header_re.finditer(text))
+
+        section_map = {
+            'MECHANISM':    'mechanism_of_interaction',
+            'SYMPTOMS':     'clinical_manifestations',
+            'CLINICAL':     'clinical_manifestations',
+            'RISK FACTORS': 'risk_factors',
+            'RISK FACTOR':  'risk_factors',
+            'RISK':         'risk_factors',
+            'MONITORING':   'monitoring_recommendations',
+            'MONITOR':      'monitoring_recommendations',
+            'ALTERNATIVES': 'alternative_suggestions',
+            'ALTERNATIVE':  'alternative_suggestions',
+        }
+
         found_sections = 0
-        for pattern, key in section_patterns:
-            match = re.search(pattern, text, re.IGNORECASE | re.DOTALL)
-            if match:
-                content = match.group(1).strip()
-                # Split into points
-                points = self._split_to_points(content)
-                if points:
-                    result[key] = points
-                    found_sections += 1
-        
+        for i, hdr in enumerate(headers):
+            keyword = hdr.group(1).strip().upper()
+            # Remove trailing S variance for mapping
+            key = section_map.get(keyword)
+            if not key:
+                # Try partial match
+                for map_kw, map_key in section_map.items():
+                    if keyword.startswith(map_kw[:4]):
+                        key = map_key
+                        break
+            if not key:
+                continue
+
+            # Content runs from end of this header to start of next header (or end)
+            start = hdr.end()
+            end = headers[i + 1].start() if i + 1 < len(headers) else len(text)
+            raw_section = text[start:end].strip()
+
+            # Remove trailing "Consult your healthcare provider."
+            raw_section = re.sub(
+                r'\*{0,2}\s*Consult your healthcare provider\.?\s*\*{0,2}\s*$',
+                '', raw_section, flags=re.IGNORECASE
+            ).strip()
+
+            # Clean markdown
+            raw_section = self._clean_markdown(raw_section)
+
+            # Split into bullet points
+            points = self._split_to_points(raw_section)
+            if points:
+                result[key] = points
+                found_sections += 1
+
         print(f"   📝 Found {found_sections} structured sections")
-        
-        # If no structured sections found, try simpler approach
+
+        # ── Fallback: if no headers matched, split by lines / paragraphs ──
         if found_sections == 0:
-            # Split by any headers or numbered items
-            lines = text.split('\n')
-            all_content = []
-            
+            cleaned = self._clean_markdown(text)
+            lines = [l.strip() for l in cleaned.split('\n') if l.strip()]
+            # Remove title lines, "Consult …" line
+            content_lines = []
             for line in lines:
-                line = line.strip()
-                # Skip empty lines and very short lines
-                if len(line) > 30:
-                    # Remove markdown formatting
-                    line = re.sub(r'\*\*|\*|#{1,3}\s*', '', line)
-                    # Remove leading numbers/bullets
-                    line = re.sub(r'^[\d]+[\.\)]\s*', '', line)
-                    line = re.sub(r'^[-•]\s*', '', line)
-                    if line:
-                        all_content.append(line)
-            
-            print(f"   📝 Extracted {len(all_content)} content lines")
-            
-            # Distribute content across sections
-            if all_content:
-                n = len(all_content)
-                # Mechanism gets first 40%
-                mech_end = max(1, int(n * 0.4))
-                # Clinical gets next 20%
-                clin_end = mech_end + max(1, int(n * 0.2))
-                # Risk gets next 15%
-                risk_end = clin_end + max(1, int(n * 0.15))
-                # Monitor gets next 15%
-                mon_end = risk_end + max(1, int(n * 0.15))
-                
-                result["mechanism_of_interaction"] = all_content[:mech_end]
-                result["clinical_manifestations"] = all_content[mech_end:clin_end] if mech_end < n else []
-                result["risk_factors"] = all_content[clin_end:risk_end] if clin_end < n else []
-                result["monitoring_recommendations"] = all_content[risk_end:mon_end] if risk_end < n else []
-                result["alternative_suggestions"] = all_content[mon_end:] if mon_end < n else []
-        
-        # Ensure each section has content - use raw text segments as fallback
-        if not result["mechanism_of_interaction"] and text:
-            # Use first part of raw text
-            result["mechanism_of_interaction"] = [text[:500] if len(text) > 500 else text]
-        
-        if not result["clinical_manifestations"]:
-            result["clinical_manifestations"] = [f"The {drug1}-{drug2} interaction may lead to adverse clinical effects. Monitor for unusual symptoms and report any concerns to your healthcare provider."]
-        
-        if not result["risk_factors"]:
-            result["risk_factors"] = [f"Patients with pre-existing conditions, elderly patients, and those on multiple medications may be at higher risk for {drug1}-{drug2} interaction effects."]
-        
-        if not result["monitoring_recommendations"]:
-            result["monitoring_recommendations"] = ["Regular monitoring of relevant lab values and clinical symptoms is recommended. Follow up with your healthcare provider as directed."]
-        
-        if not result["alternative_suggestions"]:
-            result["alternative_suggestions"] = ["Discuss potential alternative medications or dosing strategies with your healthcare provider if this interaction is a concern."]
-        
-        # Log what we parsed
-        total_points = sum(len(v) for v in result.values())
+                if re.match(r'^Drug Interaction Analysis', line, re.I):
+                    continue
+                if re.match(r'^Consult your', line, re.I):
+                    continue
+                # Strip leading bullet / number
+                line = re.sub(r'^[\d]+[.\)]\s*', '', line)
+                line = re.sub(r'^[-•*]\s*', '', line)
+                if len(line) > 15:
+                    content_lines.append(line)
+
+            if content_lines:
+                n = len(content_lines)
+                slices = [0.30, 0.50, 0.65, 0.80, 1.0]
+                keys = list(result.keys())
+                prev = 0
+                for idx, frac in enumerate(slices):
+                    end_i = max(prev + 1, int(n * frac))
+                    result[keys[idx]] = content_lines[prev:end_i]
+                    prev = end_i
+
+        # ── Ensure every section has at least one entry ──
+        defaults = {
+            "mechanism_of_interaction": f"The interaction between {drug1} and {drug2} involves pharmacological pathways that may alter drug efficacy or safety.",
+            "clinical_manifestations": f"The {drug1}-{drug2} combination may produce adverse clinical effects. Monitor for unusual symptoms.",
+            "risk_factors": "Elderly patients, those with renal or hepatic impairment, and patients on multiple medications are at higher risk.",
+            "monitoring_recommendations": "Regular monitoring of relevant lab values and clinical symptoms is recommended.",
+            "alternative_suggestions": "Discuss potential alternative medications or dosing strategies with your healthcare provider."
+        }
+        for key, default in defaults.items():
+            if not result[key]:
+                result[key] = [default]
+
+        total_points = sum(len(v) for v in result.values() if isinstance(v, list))
         print(f"   ✅ Parsed {total_points} total points across all sections")
-        
-        # Add raw response for transparency
+
         result["_raw_response"] = text[:1500]
-        
         return result
-    
+
     def _split_to_points(self, content: str) -> list:
-        """Split content into individual points/bullets."""
+        """
+        Split a cleaned section into individual bullet points / paragraphs.
+        Returns at most 7 points per section.
+        """
         import re
-        
+
+        content = content.strip()
+        if not content:
+            return []
+
         points = []
-        
-        # Try splitting by numbered items, bullets, or newlines
-        lines = re.split(r'\n(?=[\d•\-\*])', content)
-        
+
+        # Strategy 1: split on bullet lines  (* item  or  - item)
+        bullet_parts = re.split(r'\n\s*[*\-•]\s+', '\n' + content)
+        for part in bullet_parts:
+            part = part.strip()
+            # Clean leftover markdown
+            part = re.sub(r'\*\*(.+?)\*\*', r'\1', part)
+            part = part.replace('**', '')
+            part = re.sub(r'^[-•*]\s*', '', part)
+            # Remove leading colons left from bold labels  "INR:" already handled
+            if part and len(part) > 10:
+                points.append(part)
+
+        if len(points) >= 2:
+            return points[:7]
+
+        # Strategy 2: split on newlines
+        lines = [l.strip() for l in content.split('\n') if l.strip()]
+        points = []
         for line in lines:
-            line = line.strip()
-            # Clean up
-            line = re.sub(r'^[\d]+[\.\)]\s*', '', line)
-            line = re.sub(r'^[-•\*]\s*', '', line)
-            line = re.sub(r'\*\*|\*', '', line)  # Remove markdown bold
-            
-            if line and len(line) > 20:
+            line = re.sub(r'^[\d]+[.\)]\s*', '', line)
+            line = re.sub(r'^[-•*]\s*', '', line)
+            if line and len(line) > 10:
                 points.append(line)
-        
-        # If we only got 1 big chunk, try splitting by sentences
-        if len(points) <= 1 and content:
-            sentences = re.split(r'(?<=[.!?])\s+', content)
-            points = []
-            current = ""
-            for sent in sentences:
-                current += sent + " "
-                if len(current) > 80:
-                    points.append(current.strip())
-                    current = ""
-            if current.strip():
+
+        if len(points) >= 2:
+            return points[:7]
+
+        # Strategy 3: split long block by sentences, group ~2 sentences per point
+        sentences = re.split(r'(?<=[.!?])\s+', content)
+        points = []
+        current = ""
+        for sent in sentences:
+            current += sent.strip() + " "
+            if len(current) > 60:
                 points.append(current.strip())
-        
-        return points[:5]  # Max 5 points per section
+                current = ""
+        if current.strip():
+            points.append(current.strip())
+
+        return points[:7]

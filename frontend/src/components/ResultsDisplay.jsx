@@ -17,6 +17,18 @@ const ResultsDisplay = ({ results, imageUrl }) => {
     }));
   };
 
+  /** Strip any residual markdown symbols that survive backend cleanup */
+  const cleanText = (text) => {
+    if (!text) return '';
+    return text
+      .replace(/\*\*(.+?)\*\*/g, '$1')   // **bold** → bold
+      .replace(/\*\*/g, '')               // stray **
+      .replace(/(?<!\w)\*(?!\s)/g, '')    // leading stray *
+      .replace(/#{1,4}\s*/g, '')          // ## headers
+      .replace(/\s{2,}/g, ' ')            // collapse whitespace
+      .trim();
+  };
+
   const getRiskBadgeClass = (riskLevel) => {
     const level = riskLevel?.toLowerCase();
     if (level === 'high') return 'risk-badge-high';
@@ -141,7 +153,7 @@ const ResultsDisplay = ({ results, imageUrl }) => {
                     {expandedSections.mechanism && (
                       <ul className="explanation-list">
                         {interaction.ai_explanation.mechanism_of_interaction.map((point, i) => (
-                          <li key={i}>{point}</li>
+                          <li key={i}>{cleanText(point)}</li>
                         ))}
                       </ul>
                     )}
@@ -165,7 +177,7 @@ const ResultsDisplay = ({ results, imageUrl }) => {
                     {expandedSections.clinical && (
                       <ul className="explanation-list">
                         {interaction.ai_explanation.clinical_manifestations.map((point, i) => (
-                          <li key={i}>{point}</li>
+                          <li key={i}>{cleanText(point)}</li>
                         ))}
                       </ul>
                     )}
@@ -189,7 +201,7 @@ const ResultsDisplay = ({ results, imageUrl }) => {
                     {expandedSections.risks && (
                       <ul className="explanation-list">
                         {interaction.ai_explanation.risk_factors.map((point, i) => (
-                          <li key={i}>{point}</li>
+                          <li key={i}>{cleanText(point)}</li>
                         ))}
                       </ul>
                     )}
@@ -213,7 +225,7 @@ const ResultsDisplay = ({ results, imageUrl }) => {
                     {expandedSections.monitoring && (
                       <ul className="explanation-list">
                         {interaction.ai_explanation.monitoring_recommendations.map((point, i) => (
-                          <li key={i}>{point}</li>
+                          <li key={i}>{cleanText(point)}</li>
                         ))}
                       </ul>
                     )}
@@ -237,7 +249,7 @@ const ResultsDisplay = ({ results, imageUrl }) => {
                     {expandedSections.alternatives && (
                       <ul className="explanation-list">
                         {interaction.ai_explanation.alternative_suggestions.map((point, i) => (
-                          <li key={i}>{point}</li>
+                          <li key={i}>{cleanText(point)}</li>
                         ))}
                       </ul>
                     )}
