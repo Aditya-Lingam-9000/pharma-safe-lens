@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import ImageUpload from './components/ImageUpload';
 import ResultsDisplay from './components/ResultsDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
@@ -20,56 +20,37 @@ function App() {
   };
 
   const handleUpload = async () => {
-    if (!selectedImage) {
-      setError('Please select an image first');
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    setResults(null);
-
+    if (!selectedImage) { setError('Please select an image first'); return; }
+    setLoading(true); setError(null); setResults(null);
     try {
-      console.log('📤 Uploading image to backend...');
+      console.log('Uploading to:', getApiUrl());
       const data = await uploadImage(selectedImage);
-      console.log('✅ Received results:', data);
+      console.log('Results:', data);
       setResults(data);
     } catch (err) {
-      console.error('❌ Upload failed:', err);
-      setError(err.message || 'Failed to analyze image. Please try again.');
-    } finally {
-      setLoading(false);
-    }
+      console.error('Upload failed:', err);
+      setError(err.message || 'Failed to analyze image.');
+    } finally { setLoading(false); }
   };
 
   const handleReset = () => {
-    setSelectedImage(null);
-    setUploadedImageUrl(null);
-    setLoading(false);
-    setError(null);
-    setResults(null);
+    setSelectedImage(null); setUploadedImageUrl(null);
+    setLoading(false); setError(null); setResults(null);
   };
 
   return (
     <div className="app-container">
-      {/* Header */}
       <header className="app-header">
         <div className="logo-section">
-          <div className="logo-icon">💊</div>
-          <div className="logo-text">
-            <h1 className="logo-title">PHARMA-SAFE LENS</h1>
-            <p className="logo-subtitle">AI-Powered Drug Interaction Analyzer</p>
+          <div>
+            <h1 className="logo-title">Pharma-Safe Lens</h1>
+            <p className="logo-subtitle">AI-Powered Drug Interaction Analysis</p>
           </div>
         </div>
-        <div className="api-status">
-          <span className="status-dot"></span>
-          <span className="status-text">Backend: {getApiUrl()}</span>
-        </div>
+        <div className="header-badge">TxGemma 9B</div>
       </header>
 
-      {/* Main Content */}
       <main className="main-content">
-        {/* Upload Section */}
         <section className="upload-section">
           <ImageUpload
             onImageSelect={handleImageSelect}
@@ -81,65 +62,27 @@ function App() {
           />
         </section>
 
-        {/* Loading State */}
-        {loading && (
-          <section className="loading-section">
-            <LoadingSpinner />
-          </section>
-        )}
+        {loading && <section className="loading-section"><LoadingSpinner /></section>}
+        {error && !loading && <section className="error-section"><ErrorMessage message={error} onRetry={handleUpload} /></section>}
+        {results && !loading && !error && <section className="results-section"><ResultsDisplay results={results} /></section>}
 
-        {/* Error State */}
-        {error && !loading && (
-          <section className="error-section">
-            <ErrorMessage message={error} onRetry={handleUpload} />
-          </section>
-        )}
-
-        {/* Results Section */}
-        {results && !loading && !error && (
-          <section className="results-section">
-            <ResultsDisplay results={results} imageUrl={uploadedImageUrl} />
-          </section>
-        )}
-
-        {/* Empty State */}
         {!selectedImage && !loading && !error && !results && (
           <section className="empty-state">
-            <div className="empty-state-icon">📋</div>
-            <h2 className="empty-state-title">Ready to Analyze</h2>
-            <p className="empty-state-text">
-              Upload a prescription image to detect potential drug interactions
-            </p>
+            <h2 className="empty-state-title">Upload a prescription to begin</h2>
+            <p className="empty-state-text">Detect potential drug interactions using AI analysis</p>
             <div className="empty-state-features">
-              <div className="feature-item">
-                <span className="feature-icon">🔍</span>
-                <span>OCR Text Extraction</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">🧠</span>
-                <span>AI-Powered Analysis</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">⚕️</span>
-                <span>FDA-Verified Database</span>
-              </div>
-              <div className="feature-item">
-                <span className="feature-icon">🛡️</span>
-                <span>Safety Guardrails</span>
-              </div>
+              <div className="feature-item">OCR Extraction</div>
+              <div className="feature-item">Drug Normalization</div>
+              <div className="feature-item">AI Analysis</div>
+              <div className="feature-item">Safety Validation</div>
             </div>
           </section>
         )}
       </main>
 
-      {/* Footer */}
       <footer className="app-footer">
-        <p className="footer-text">
-          ⚠️ This tool is for informational purposes only. Always consult qualified healthcare professionals before making medication decisions.
-        </p>
-        <p className="footer-credits">
-          Powered by MedGemma | Built with React + Vite
-        </p>
+        <p className="footer-text">For informational purposes only. Always consult healthcare professionals.</p>
+        <p className="footer-credits">Powered by TxGemma &middot; React + Vite</p>
       </footer>
     </div>
   );

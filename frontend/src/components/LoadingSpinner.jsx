@@ -1,44 +1,19 @@
-import './LoadingSpinner.css';
+﻿import './LoadingSpinner.css';
 
 const LoadingSpinner = () => {
   return (
     <div className="loading-container">
       <div className="loading-card card">
-        <div className="spinner-wrapper">
-          <div className="spinner-outer">
-            <div className="spinner-inner"></div>
-          </div>
-          <div className="spinner-pulse"></div>
-        </div>
-        
-        <h3 className="loading-title">Analyzing Prescription...</h3>
-        
+        <div className="spinner-bar"><div className="spinner-fill"></div></div>
+        <p className="loading-title">Analyzing prescription...</p>
         <div className="loading-steps">
-          <div className="loading-step active">
-            <div className="step-icon">🔍</div>
-            <div className="step-text">Extracting text from image</div>
-          </div>
-          <div className="loading-step active">
-            <div className="step-icon">💊</div>
-            <div className="step-text">Identifying drug names</div>
-          </div>
-          <div className="loading-step active">
-            <div className="step-icon">🔗</div>
-            <div className="step-text">Checking interactions</div>
-          </div>
-          <div className="loading-step active">
-            <div className="step-icon">🧠</div>
-            <div className="step-text">Generating AI analysis</div>
-          </div>
-          <div className="loading-step active">
-            <div className="step-icon">🛡️</div>
-            <div className="step-text">Validating safety</div>
-          </div>
+          <div className="l-step">Extracting text via OCR</div>
+          <div className="l-step">Identifying drug names</div>
+          <div className="l-step">Checking interactions</div>
+          <div className="l-step">Running AI model</div>
+          <div className="l-step">Validating safety</div>
         </div>
-        
-        <p className="loading-hint">
-          This may take 15-30 seconds...
-        </p>
+        <p className="loading-hint">This may take 15-30 seconds</p>
       </div>
     </div>
   );

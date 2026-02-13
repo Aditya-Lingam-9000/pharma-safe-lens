@@ -1,39 +1,21 @@
-import './ErrorMessage.css';
+﻿import './ErrorMessage.css';
 
-const ErrorMessage = ({ message, onRetry }) => {
-  return (
-    <div className="error-container">
-      <div className="error-card card">
-        <div className="error-icon-wrapper">
-          <div className="error-icon">❌</div>
-          <div className="error-pulse"></div>
-        </div>
-        
-        <h3 className="error-title">Analysis Failed</h3>
-        
-        <div className="error-message-box">
-          <p className="error-message">{message}</p>
-        </div>
-        
-        <div className="error-actions">
-          <button onClick={onRetry} className="btn btn-danger">
-            🔄 Try Again
-          </button>
-        </div>
-        
-        <div className="error-tips">
-          <p className="tips-title">💡 Troubleshooting Tips:</p>
-          <ul className="tips-list">
-            <li>Ensure backend is running on Kaggle</li>
-            <li>Check if ngrok URL is correctly configured</li>
-            <li>Verify image file is valid (JPG/PNG, &lt;2MB)</li>
-            <li>Check internet connection</li>
-            <li>Wait a moment and try again</li>
-          </ul>
-        </div>
+const ErrorMessage = ({ message, onRetry }) => (
+  <div className="error-container">
+    <div className="error-card card">
+      <p className="error-title">Analysis Failed</p>
+      <div className="error-msg-box"><p className="error-msg">{message}</p></div>
+      <button onClick={onRetry} className="btn btn-danger">Try Again</button>
+      <div className="error-tips">
+        <p className="tips-title">Troubleshooting</p>
+        <ul className="tips-list">
+          <li>Ensure backend is running on Kaggle</li>
+          <li>Verify ngrok URL in api.js</li>
+          <li>Check image format (JPG/PNG, under 2 MB)</li>
+        </ul>
       </div>
     </div>
-  );
-};
+  </div>
+);
 
 export default ErrorMessage;
