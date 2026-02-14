@@ -1,9 +1,12 @@
 from fastapi import APIRouter, File, UploadFile, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from typing import List, Dict
 import shutil
 import os
 import uuid
 import logging
+import json
+import asyncio
 
 # Dependencies
 from backend.app.dependencies import get_drug_db, get_interaction_checker
@@ -154,3 +157,160 @@ async def analyze_image(
         if os.path.exists(temp_path):
             os.remove(temp_path)
             logger.info(f"Cleaned up {temp_path}")
+
+
+@router.post("/analyze-image-stream")
+async def analyze_image_stream(
+    file: UploadFile = File(...),
+    db = Depends(get_drug_db),
+    checker = Depends(get_interaction_checker)
+):
+    """
+    Streaming version of analyze-image.
+    Uses Server-Sent Events (SSE) to progressively send each interaction
+    result as the AI generates it, so the frontend can display them one-by-one.
+    
+    Event types:
+      - init:        {detected_drugs, interaction_count, interactions_basic}
+      - interaction:  {index, interaction}   (one per interaction, with ai_explanation)
+      - done:        {}
+      - error:       {detail}
+    """
+    
+    # 1. Save uploaded file
+    file_extension = file.filename.split(".")[-1]
+    temp_filename = f"{uuid.uuid4()}.{file_extension}"
+    temp_path = os.path.join(UPLOAD_DIR, temp_filename)
+    
+    with open(temp_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    logger.info(f"[stream] File saved to {temp_path}")
+
+    async def event_generator():
+        try:
+            # 2. OCR
+            extracted_text = extract_text(temp_path)
+            logger.info(f"[stream] OCR: {extracted_text}")
+
+            if not extracted_text:
+                yield _sse("init", {
+                    "detected_drugs": [],
+                    "interaction_count": 0,
+                    "interactions_basic": [],
+                    "message": "No text detected in the image."
+                })
+                yield _sse("done", {})
+                return
+
+            # 3. Drug normalization
+            normalized_drugs = db.normalize(extracted_text)
+            logger.info(f"[stream] Drugs: {normalized_drugs}")
+
+            if len(normalized_drugs) < 2:
+                yield _sse("init", {
+                    "detected_drugs": normalized_drugs,
+                    "interaction_count": 0,
+                    "interactions_basic": [],
+                    "message": "Fewer than 2 drugs detected."
+                })
+                yield _sse("done", {})
+                return
+
+            # 4. Interaction check (fast — no AI yet)
+            interactions = checker.check_multiple(normalized_drugs)
+            logger.info(f"[stream] Interactions found: {len(interactions)}")
+
+            # Build basic info list (without AI explanations)
+            interactions_basic = []
+            for ix in interactions:
+                interactions_basic.append({
+                    "drug_pair": ix['drug_pair'],
+                    "risk_level": ix['risk_level'],
+                    "basic_info": {
+                        "mechanism": ix.get('mechanism', 'Unknown'),
+                        "clinical_effect": ix.get('clinical_effect', 'Unknown'),
+                        "recommendation": ix.get('recommendation', 'Consult healthcare provider')
+                    },
+                    "ai_explanation": None,
+                    "safety_alert": False
+                })
+
+            # Send init event immediately — frontend can start rendering
+            yield _sse("init", {
+                "detected_drugs": normalized_drugs,
+                "interaction_count": len(interactions),
+                "interactions_basic": interactions_basic
+            })
+
+            # Small delay so frontend can process the init event
+            await asyncio.sleep(0.05)
+
+            # 5. Generate AI explanations one-by-one
+            for idx, interaction in enumerate(interactions):
+                try:
+                    if real_inference is not None:
+                        from backend.app.prompts import PromptTemplates
+                        prompt = PromptTemplates.format_explanation_prompt(interaction)
+                        explanation_dict = real_inference.generate_explanation(interaction, prompt)
+                    else:
+                        explanation_dict = AIInference.generate_explanation(interaction)
+
+                    # Safety check
+                    explanation_text = "\n".join([
+                        f"Mechanism: {' '.join(explanation_dict.get('mechanism_of_interaction', [])[:2])}",
+                        f"Clinical: {' '.join(explanation_dict.get('clinical_manifestations', [])[:2])}"
+                    ])
+                    is_safe, _ = SafetyGuard.validate_output(explanation_text)
+
+                    result = {
+                        "drug_pair": interaction['drug_pair'],
+                        "risk_level": interaction['risk_level'],
+                        "basic_info": {
+                            "mechanism": interaction.get('mechanism', 'Unknown'),
+                            "clinical_effect": interaction.get('clinical_effect', 'Unknown'),
+                            "recommendation": interaction.get('recommendation', 'Consult healthcare provider')
+                        },
+                        "ai_explanation": explanation_dict,
+                        "safety_alert": not is_safe
+                    }
+
+                    yield _sse("interaction", {"index": idx, "interaction": result})
+                    logger.info(f"[stream] Sent interaction {idx+1}/{len(interactions)}")
+
+                    # Small yield between interactions
+                    await asyncio.sleep(0.05)
+
+                except Exception as ix_err:
+                    logger.error(f"[stream] Interaction {idx} failed: {ix_err}")
+                    yield _sse("interaction", {
+                        "index": idx,
+                        "interaction": interactions_basic[idx],
+                        "error": str(ix_err)
+                    })
+
+            yield _sse("done", {})
+
+        except Exception as e:
+            logger.error(f"[stream] Fatal error: {e}")
+            yield _sse("error", {"detail": str(e)})
+
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+                logger.info(f"[stream] Cleaned up {temp_path}")
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+            "Access-Control-Allow-Origin": "*",
+        }
+    )
+
+
+def _sse(event: str, data: dict) -> str:
+    """Format a Server-Sent Event string."""
+    return f"event: {event}\ndata: {json.dumps(data)}\n\n"

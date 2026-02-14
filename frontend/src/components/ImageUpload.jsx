@@ -28,7 +28,7 @@ const ImageUpload = ({ onImageSelect, selectedImage, uploadedImageUrl, loading, 
         <p className="upload-subtitle">Drag & drop or click to select an image</p>
 
         {!selectedImage ? (
-          <div className={upload-dropzone }
+          <div className={`upload-dropzone ${dragActive ? 'drag-active' : ''}`}
             onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag}
             onDrop={handleDrop} onClick={handleClick}>
             <div className="dropzone-content">

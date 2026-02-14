@@ -9,6 +9,25 @@
 .summary-stat { display: flex; align-items: baseline; gap: 6px; }
 .stat-val { font-size: 22px; font-weight: 700; color: var(--cyan); font-family: var(--mono); }
 .stat-lbl { font-size: 11px; color: var(--white-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+.summary-progress { margin-left: auto; }
+.progress-val { font-size: 18px; }
+
+/* Streaming progress bar */
+.stream-progress {
+  padding: 10px 16px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.stream-progress-bar {
+  width: 100%; height: 4px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.stream-progress-fill {
+  height: 100%; background: var(--cyan); border-radius: 2px;
+  transition: width 0.5s ease; box-shadow: 0 0 8px rgba(0,217,255,0.3);
+}
+.stream-progress-text {
+  font-size: 11px; color: var(--white-dim); margin-top: 8px; text-align: center;
+  font-family: var(--mono); letter-spacing: 0.3px;
+}
 
 /* Drug chips */
 .drugs-row { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -20,8 +39,11 @@
 /* Interaction card */
 .interaction-card {
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
-  overflow: hidden;
+  overflow: hidden; animation: fadeUp 0.35s ease;
 }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+.interaction-ready { border-color: rgba(0,217,255,0.15); }
 
 /* Interaction header */
 .ix-header {
@@ -38,6 +60,46 @@
 .risk-high { background: rgba(255,77,77,0.12); color: #FF4D4D; border: 1px solid rgba(255,77,77,0.25); }
 .risk-mod { background: rgba(255,184,0,0.12); color: #FFB800; border: 1px solid rgba(255,184,0,0.25); }
 .risk-low { background: rgba(0,217,255,0.10); color: var(--cyan); border: 1px solid rgba(0,217,255,0.2); }
+
+/* Pending interaction */
+.interaction-pending { opacity: 0.45; }
+.ix-pending-badge {
+  padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.5px; color: var(--white-faint); background: var(--border);
+  border: 1px solid var(--border-hover);
+}
+.ix-pending-body { padding: 10px 16px; }
+.pending-bar {
+  width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.pending-fill { width: 0%; height: 100%; }
+.pending-text { font-size: 11px; color: var(--white-faint); margin-top: 6px; font-family: var(--mono); }
+
+/* Loading / generating interaction */
+.interaction-loading { border-color: rgba(0,217,255,0.2); }
+.ix-loading-badge {
+  padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.5px; color: var(--cyan); background: var(--cyan-dim);
+  border: 1px solid rgba(0,217,255,0.25); animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+.ix-generating { padding: 10px 16px; }
+.generating-bar {
+  width: 100%; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden;
+}
+.generating-fill {
+  width: 40%; height: 100%; background: var(--cyan); border-radius: 2px;
+  animation: slide 1.5s ease-in-out infinite;
+}
+@keyframes slide {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(350%); }
+}
+.generating-text {
+  font-size: 11px; color: var(--cyan); margin-top: 6px; font-family: var(--mono);
+  letter-spacing: 0.3px;
+}
 
 /* Quick info */
 .ix-quick { padding: 10px 16px; border-bottom: 1px solid var(--border); }

@@ -3,39 +3,95 @@ import ImageUpload from './components/ImageUpload';
 import ResultsDisplay from './components/ResultsDisplay';
 import LoadingSpinner from './components/LoadingSpinner';
 import ErrorMessage from './components/ErrorMessage';
-import { uploadImage, getApiUrl } from './services/api';
+import { uploadImageStream, getApiUrl } from './services/api';
 
 function App() {
   const [selectedImage, setSelectedImage] = useState(null);
   const [uploadedImageUrl, setUploadedImageUrl] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Progressive results state
   const [results, setResults] = useState(null);
+  // Track which phase we're in: null | 'ocr' | 'generating' | 'done'
+  const [streamPhase, setStreamPhase] = useState(null);
+  // How many interactions have been fully analyzed
+  const [completedCount, setCompletedCount] = useState(0);
 
   const handleImageSelect = (file) => {
     setSelectedImage(file);
     setUploadedImageUrl(URL.createObjectURL(file));
     setError(null);
     setResults(null);
+    setStreamPhase(null);
+    setCompletedCount(0);
   };
 
   const handleUpload = async () => {
     if (!selectedImage) { setError('Please select an image first'); return; }
     setLoading(true); setError(null); setResults(null);
+    setStreamPhase('ocr'); setCompletedCount(0);
+
     try {
-      console.log('Uploading to:', getApiUrl());
-      const data = await uploadImage(selectedImage);
-      console.log('Results:', data);
-      setResults(data);
+      console.log('Streaming upload to:', getApiUrl());
+
+      await uploadImageStream(selectedImage, {
+        // Called once: drugs detected, interaction count known
+        onInit: (data) => {
+          console.log('SSE init:', data);
+          setStreamPhase('generating');
+          setResults({
+            status: 'success',
+            detected_drugs: data.detected_drugs,
+            interaction_count: data.interaction_count,
+            interactions: data.interactions_basic || []
+          });
+        },
+
+        // Called per interaction as AI finishes each one
+        onInteraction: (data) => {
+          console.log('SSE interaction:', data.index);
+          setResults(prev => {
+            if (!prev) return prev;
+            const updated = [...prev.interactions];
+            updated[data.index] = data.interaction;
+            return { ...prev, interactions: updated };
+          });
+          setCompletedCount(c => c + 1);
+        },
+
+        // All interactions done
+        onDone: () => {
+          console.log('SSE done');
+          setStreamPhase('done');
+          setLoading(false);
+        },
+
+        // Server error mid-stream
+        onError: (detail) => {
+          console.error('SSE error:', detail);
+          setError(detail);
+          setLoading(false);
+          setStreamPhase(null);
+        }
+      });
+
+      // If stream ends without explicit done event
+      setLoading(false);
+      if (streamPhase !== 'done') setStreamPhase('done');
+
     } catch (err) {
       console.error('Upload failed:', err);
       setError(err.message || 'Failed to analyze image.');
-    } finally { setLoading(false); }
+      setLoading(false);
+      setStreamPhase(null);
+    }
   };
 
   const handleReset = () => {
     setSelectedImage(null); setUploadedImageUrl(null);
     setLoading(false); setError(null); setResults(null);
+    setStreamPhase(null); setCompletedCount(0);
   };
 
   return (
@@ -62,9 +118,22 @@ function App() {
           />
         </section>
 
-        {loading && <section className="loading-section"><LoadingSpinner /></section>}
+        {/* Show spinner only during OCR phase (before any results arrive) */}
+        {loading && !results && <section className="loading-section"><LoadingSpinner /></section>}
+
         {error && !loading && <section className="error-section"><ErrorMessage message={error} onRetry={handleUpload} /></section>}
-        {results && !loading && !error && <section className="results-section"><ResultsDisplay results={results} /></section>}
+
+        {/* Show results as soon as init event arrives, even while still streaming */}
+        {results && (
+          <section className="results-section">
+            <ResultsDisplay
+              results={results}
+              streaming={loading && streamPhase === 'generating'}
+              completedCount={completedCount}
+              totalCount={results.interaction_count || 0}
+            />
+          </section>
+        )}
 
         {!selectedImage && !loading && !error && !results && (
           <section className="empty-state">
